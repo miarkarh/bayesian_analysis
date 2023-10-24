@@ -20,11 +20,11 @@ from scipy.interpolate import interp1d
 Nc = 3                              # QCD colors quantity
 alpha_em = 1 / 137                    # Fine structure constant
 rmax = 50
-bmax = 10  # fm
+bmax = 50
 # bb = np.linspace(0, 1, 50)
 ws_norm = 1
 normalised_with_A = 1
-quadtol = 1e-4  # How accurate scipy integrate quad calculates the integral. Larger is faster.
+quadtol = 1e-2  # How accurate scipy integrate quad calculates the integral. Larger is faster.
 
 
 def normalize_ws(A):
@@ -58,7 +58,7 @@ def T_A(b, A):
     Parameters
     ----------
     b : float
-        impact parameter in fm units.
+        impact parameter in 1/GeV units.
     A : int
         Number of nucleons.
 
@@ -68,7 +68,6 @@ def T_A(b, A):
         Integrated Woods-Saxon distribution.
 
     """
-    b = b * 5.068   # fm to GeV^-1
     a = 0.54 * 5.068
     # r0 = 1.25 * 5.068
     R = (1.12 * A**(1 / 3) - 0.86 * A**(- 1 / 3)) * 5.068
@@ -84,9 +83,9 @@ def dipole_amplitude(b, r, x, theta, A):
     Parameters
     ----------
     b : float
-        Impact parameter in fm units.
+        Impact parameter in 1/GeV units.
     r : float
-        The transverse size of the dipole in fm units.
+        The transverse size of the dipole in 1/GeV units.
     x : float
         Bjorken x
     theta : list
@@ -115,13 +114,13 @@ def sigma_dip(r, x, theta, b=None, A=1, dip_theory='GBW'):
     Parameters
     ----------
     r : float
-        The transverse size of the dipole in fm units.
+        The transverse size of the dipole in 1/GeV units.
     x : float
         Bjorken x.
     theta : list
         The list of parameters.
     b : float, optional
-        Impact parameter in fm units. The default is None.
+        Impact parameter in 1/GeV units. The default is None.
     A : int, optional
         Number of nucleons. The default is 1.
     dip_theory : string, optional
@@ -360,30 +359,31 @@ def sigma_r_c(x, Q2, y, sigma0, lambd, Q02, mc):
     return sig_r
 
 
-# This is for testing
+if __name__ == '__main__':
+    A = 197
+    normalize_ws(A)
+    bb = np.linspace(0, 50, 100)
+    TA_bb = [T_A(b, A) for b in bb]
+    TAinterpolator = interp1d(bb, TA_bb, bounds_error=False, fill_value=0)
 
-# if __name__ == '__main__':
+    def T_A(b):
+        return TAinterpolator(b)
+    TAb = lambda b: T_A(b) * b * 2 * np.pi
+    normtest = integrate.quad(TAb, 0, np.inf)  # * 2*np.pi
+    print("Testing normalization")
+    print(normtest)
+
+    # This is for testing
+    theta1 = [16 * 2.56819, 0.3, 2.24 * 10**(-4), 2]
+    testingfunc = lambda b: sigma_dip(0.0001, 0.01, theta1, b, A, dip_theory='other') * b * 2 * np.pi
+    test2 = integrate.quad(testingfunc, 0, np.inf)[0]
+    test3 = sigma_dip(0.0001, 0.01, theta1)
+    print(test2 / test3)
     # print(sigma_r(0.01, 2, 0.01, 16, 0.3, 1))
-    # A = 197
-    # normalize_ws(A)
-    # bb = np.linspace(0, 50, 100)
-    # TA_bb = [T_A(b, A) for b in bb]
-    # TAinterpolator = interp1d(bb, TA_bb, bounds_error=False, fill_value=0)
+    # x, Q2, sigma0, lambd, Q02,
+    parametization = [0.01, 40, 16, 0.3, 2]
+    print("A =", A)
+    print(F2(*parametization, A=A, dip_theory='other') / F2(*parametization, A=1, dip_theory='GBW') / A)
+    # print(F2(*ags, A=A, dip_theory='other'))
 
-    # def T_A(b):
-    #     return TAinterpolator(b)
-    # TAb = lambda b: T_A(b) * b * 2 * np.pi
-    # normtest = integrate.quad(TAb, 0, np.inf)  # * 2*np.pi
-    # print("Testing normalization")
-    # print(normtest)
-    # theta1 = [16 * 2.56819, 0.3, 2.24 * 10**(-4), 2]
-    # testingfunc = lambda b: sigma_dip(0.0001, 0.01, theta1, b, A, dip_theory='other') * b * 2 * np.pi
-    # test2 = integrate.quad(testingfunc, 0, np.inf)[0]
-    # test3 = sigma_dip(0.0001, 0.01, theta1)
-    # print(test2 / test3)
-    # # print(sigma_r(0.01, 2, 0.01, 16, 0.3, 1))
-    # # x, Q2, sigma0, lambd, Q02,
-    # parametization = [0.01, 40, 16, 0.3, 2]
-    # print("A =", A)
-    # print(F2(*parametization, A=A, dip_theory='other') / F2(*parametization, A=1, dip_theory='GBW') / A)
-    # # print(F2(*ags, A=A, dip_theory='other'))
+    # print(sigma_r(0.01, 2, 0.01, 16, 0.3, 1))
