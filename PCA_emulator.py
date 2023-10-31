@@ -46,8 +46,7 @@ class PCA_GPE:
 
     def train(self, X, Y, par_limits, n_restarts=0, consta_k1_bounds=[1e-5, 1e5], length_scale_bounds=[0.01, 100], noise_level_bounds=[1e-10, 1e5]):
         """
-        Scale and make PCA transformation to the training data and train the GP emulator for each
-        first n principal components.
+        Scale and PCA transform the training data and train the GP emulator for each first n principal components.
 
         ----------
         X : array

@@ -23,7 +23,7 @@ import bayesian_analysis_functions as baf
 #     print(line)
 
 
-def cut(data):
+def cut_hera1(data):
     """
     Cut data with limits 1.49< Q2 <50.1 and x < 0.01.
 
@@ -43,15 +43,15 @@ def cut(data):
     return data[(data[:, 0] > 1.49) & (data[:, 0] < 50.1) & (data[:, 1] < 0.01) & (data[:, 1] > 1e-99)]
 
 
-def mainIP_C(saveMCMC=False, loadMCMC=False, fname=None,
-             save_emulator=False, load_emulator=False,
-             pcacomps=5, n_restarts=1, extra_std=0,
-             nwalkers=100, nwalks=500, burn=200, flat=False,
-             zoom=None, plot_save=False, plot_fname=None,
-             zscore=False, z_zoom=False, z_save_fig=False, zfname='z_score.png', only_z=False,
-             create_emulator=True, whiten=True,
-             emu_std=False, emu_cov=False, cov=False,
-             more_plots=False):
+def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
+              save_emulator=False, load_emulator=False,
+              pcacomps=5, n_restarts=1, extra_std=0,
+              nwalkers=100, nwalks=500, burn=200, flat=False,
+              zoom=None, plot_save=False, plot_fname=None,
+              zscore=False, z_zoom=False, z_save_fig=False, zfname='z_score.png', only_z=False,
+              create_emulator=True, whiten=True,
+              emu_std=False, emu_cov=False, cov=False,
+              more_plots=False):
     """
     Make a bayesian analysis with light quark data.
 
@@ -126,8 +126,8 @@ def mainIP_C(saveMCMC=False, loadMCMC=False, fname=None,
     labels = names
 
     # hera 2013 data
-    # datali = cut(np.loadtxt("IPsat/data/hera_combined_sigmar.txt"))
-    # datac = cut(np.loadtxt("IPsat/data/hera_combined_sigmar_cc.txt"))
+    # datali = cut_hera1(np.loadtxt("IPsat/data/hera_combined_sigmar.txt"))
+    # datac = cut_hera1(np.loadtxt("IPsat/data/hera_combined_sigmar_cc.txt"))
 
     parameter_samples = np.loadtxt("IPsat/data/training/parameters/param_list_600_4.dat")
     traindata = np.loadtxt("IPsat/data/training/results/sigma_r_hera_II_600.dat")
@@ -322,14 +322,14 @@ def mainIP_C(saveMCMC=False, loadMCMC=False, fname=None,
 
 
 if __name__ == '__main__':
-    mainIP_C(1, 0, fname="IPsat/data/MCMC/MCMC_wC_hera_II_temp_cov.dat",
-             save_emulator=0, load_emulator=1,
-             pcacomps=5, n_restarts=10, extra_std=[[0.0013], [0.0012]],
-             nwalkers=40, nwalks=500, burn=500,
-             zoom='auto',  # plot_fname='kuvat/wC_temp.png',
-             zscore=0, only_z=0,
-             create_emulator=1, emu_std=0, emu_cov=1, cov=1,
-             more_plots=False)
+    mainIPsat(1, 0, fname="IPsat/data/MCMC/MCMC_IPsat_hera_II_cov.dat",
+              save_emulator=0, load_emulator=1,
+              pcacomps=10, n_restarts=10, extra_std=[[0.00085], [0.00055]],
+              nwalkers=200, nwalks=1000, burn=500, flat=True,
+              zoom='auto',  # plot_fname='kuvat/wC_temp.png',
+              zscore=1, only_z=0,
+              create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+              more_plots=False)
 
     # For getting notification when done. Needs plyer module.
     while True:

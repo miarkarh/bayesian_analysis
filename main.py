@@ -108,7 +108,7 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
     y_training = yt1
 
     beta = (light_data[:, 6:-9].T * 0.01 * sigma_r_exp).T
-    beta = np.column_stack((beta, procedural))
+    # beta = np.column_stack((beta, procedural))
     if cov:
         cov = baf.make_cov(uncorr, beta)
         # This is for that only covariance matrix is used later
@@ -116,7 +116,7 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
 
     # If one does not want to calculate with covariance matrix
     else:
-        sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
+        sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))  # should be same as uncorr
         print("Mean of experimental error (percent):")
         print(np.mean(sigma_r_err / sigma_r_exp * 100))
         # This is for that covariance is not used later
@@ -648,13 +648,13 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
 
 
 if __name__ == '__main__':
-    main_noC(1, 0, fname='data/MCMC/MCMC_noC.dat',
+    main_noC(1, 0, fname='data/MCMC/MCMC_noC_cov.dat',
              save_emulator=0, load_emulator=1,
              pcacomps=10, n_restarts=10, extra_std=[0.00035],
              nwalkers=200, nwalks=1000, burn=500, flat=True,
              zoom='auto',  # plot_fname='kuvat/noC_temp.png',
              zscore=1, only_z=0,
-             create_emulator=1, emu_std=0, emu_cov=1, cov=0,
+             create_emulator=1, emu_std=0, emu_cov=1, cov=1,
              more_plots=False)
 
     # main_C(1, 0, fname='data/MCMC/MCMC_wC.dat',
