@@ -48,12 +48,12 @@ def normalize_ws(A):
     global normalised_with_A
     if A == normalised_with_A: return
     normalised_with_A = A
-    ws = lambda b: T_A(b, A=A) * b
+    ws = lambda b: T_A_long(b, A=A) * b
     global ws_norm
     ws_norm = 1 / (integrate.quad(ws, 0, 100)[0] * 2 * np.pi)
 
 
-def T_A(b, A):
+def T_A_long(b, A=197):
     """
     2D Woods-Saxons distribution integrated with respect to z to 1D distribution.
 
@@ -275,14 +275,6 @@ def F2(x, Q2, sigma0, lambd, Q02, A=1, dip_theory='GBW'):
     """
     if dip_theory != 'GBW':
         # Initializing nucleus calculations.
-        normalize_ws(A)
-        bb = np.linspace(0, 100, 100)
-        TA_bb = [T_A(b, A) for b in bb]
-        global T_A
-        T_A = lambda b: interp1d(bb, TA_bb, bounds_error=False, fill_value=0)(b)
-        normtest = integrate.quad(lambda b: T_A(b) * b * 2 * np.pi, 0, np.inf)[0]
-        assert np.isclose(normtest, 1.0, 1e-2, 1e-2), "normalisation failed for T_A: n=" + str(normtest)
-
         global bmax
         bmax = fsolve(lambda b: A * T_A(b) * sigma0 * 2.56819 / 2 - 1, 7)[0]
         assert binf > bmax, "bmax larger than binf. bmax: " + str(bmax)
@@ -405,35 +397,18 @@ def ratio_R(x, Q2, sigma0, lambd, Q02, A):
     return R
 
 
-if __name__ == '__main__':
+A = 197
 
-    # # This is for testing
-    # # sigma_0, lambd, x0, Qs02 = theta
-    # theta1 = [16 * 2.56819, 0.3, 2.24 * 10**(-4), 2]
-    # testingfunc = lambda b: sigma_dip(0.0001, 0.01, theta1, b, A, dip_theory='Nuke') * b * 2 * np.pi
-    # test2 = integrate.quad(testingfunc, 0, np.inf)[0]
-    # test3 = sigma_dip(0.0001, 0.01, theta1)
-    # print(test2 / test3)
-    # # print(sigma_r(0.01, 2, 0.01, 16, 0.3, 1))
-    # # x, Q2, sigma0, lambd, Q02,
-    # A = 197
-    # parametization = [0.01, 40, 16, 0.3, 2]
-    # print("A =", A)
-    # print(ratio_R(*parametization, A=A))
-    # print(F2(*parametization, A=A, dip_theory='Nuke') / F2(*parametization, A=1, dip_theory='GBW') / A)
+normalize_ws(A)
+bb = np.linspace(0, 100, 100)
+TA_bb = [T_A_long(b, A) for b in bb]
+T_A = interp1d(bb, TA_bb, bounds_error=False, fill_value=0)
+# global T_A
 
-    # import matplotlib.pyplot as plt
-    # rvals = np.geomspace(1e-3, 100)
-    # plt.plot(rvals, [integrate.quad(lambda b: 2 * 2.0 * np.pi * b * dipole_amplitude_nuke(b, r, 1e-3, A=197, theta=theta1), 0, bmax)[0]
-    #                   + integrate.quad(lambda b: A * T_A(b) * 2.0 * np.pi * b * sigma_dip(r, 1e-3, theta=theta1), bmax, 200)[0] for r in rvals], label="Nuke")
 
-    # plt.plot(rvals, 197 * np.array([sigma_dip(r, 1e-3, theta=theta1) for r in rvals]), linestyle="dashed", label="A proton")
-    # plt.xscale("log")
-    # # plt.yscale("log")
-    # leg = plt.legend(loc="upper left")
-    # plt.xlabel(r"$r$")
-    # plt.ylabel(r"$2\int d^2b N(r,b)$")
-    # plt.tight_layout()
-    # plt.savefig("./plots/proton_vs_nuke_bint.pdf")
+# def T_A(b):
+#     return T_A_interpolator(b)
 
-    # print(sigma_r(0.01, 2, 0.01, 16, 0.3, 1))
+
+normtest = integrate.quad(lambda b: T_A(b) * b * 2 * np.pi, 0, np.inf)[0]
+assert np.isclose(normtest, 1.0, 1e-2, 1e-2), "normalisation failed for T_A: normalisation resulted" + str(normtest)
