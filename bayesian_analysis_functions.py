@@ -380,7 +380,7 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
 
 def hundred_samples(samples, par_limits, emulator, x, sigma_r_exp, sigma_r_err, save=False):
     """
-    Plot the emulator with hundred parametisations.
+    This does not work yeat as intended. Plot the emulator with hundred parametisations.
 
     Parameters
     ----------
@@ -409,8 +409,10 @@ def hundred_samples(samples, par_limits, emulator, x, sigma_r_exp, sigma_r_err, 
     for i in range(par_limits.shape[0]):
         cut += [(par_limits[i, 0] < samples[:, i]) & (samples[:, i] < par_limits[i, 1])]
     cut = np.prod(np.array(cut), axis=0)
-    hundpars = samples[cut, :]
+    hundpars = samples[cut.astype(bool), :]
+    # TODO: check if hundpars is really 100 different samples.
     hundpars = hundpars[np.random.choice(len(hundpars), 100, False)]
+    # np.save("light_posterior_hundred_samples", hundpars)
     emu_sigma = emulator(hundpars)[0]
     avg_sigma_r = np.mean(emu_sigma, axis=0)
     std_sigma_r = np.std(emu_sigma, axis=0)
