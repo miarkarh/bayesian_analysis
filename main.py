@@ -32,8 +32,8 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
         If the MCMC samples are to be saved. The default is False
     loadMCMC : bool, optional
         If the MCMC samples are to be loaded from the "fname" file. The default is False.
-    fname : string, optional
-        The name of the file where the samples are loaded from. The default is None.
+    fname : string or list of strings, optional
+        The name (names) of the file (files) where the samples are loaded from. The default is None.
     save_emulator : bool, optional
         If the emulator is to be saved. The default is False.
     load_emulator : bool, optional
@@ -159,7 +159,11 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
 
     samples = None
     if loadMCMC:
-        samples = np.loadtxt(fname)
+        if np.size(fname) > 1:
+            samples = []
+            for fname in fname:
+                samples += [np.loadtxt(fname)]
+        else: samples = np.loadtxt(fname)
     elif not loadMCMC and not create_emulator:
         print("No emulator. No sampling.")
     else:
@@ -167,6 +171,15 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
     # Plots posterior and takes plotted axis limits.
     if samples is not None:
         fig, post_limits, ax = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
+
+    # cut = []
+    # for i in range(post_limits.shape[0]):
+    #     cut += [(post_limits[i, 0] < samples[:, i]) & (samples[:, i] < post_limits[i, 1])]
+    # cut = np.prod(np.array(cut), axis=0)
+    # hundsamples = samples[cut.astype(bool), :]
+    # hundsamples = hundsamples[np.random.randint(0, hundsamples.shape[0], 100)]
+    # np.savetxt("light_posterior_hundred_samples.dat", hundsamples)
+    # hundsamples = np.loadtxt("light_posterior_hundred_samples.dat")
 
     # Next is plotting against experimental data.
     if more_plots:
@@ -209,8 +222,8 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
         If the MCMC samples are to be saved. The default is False
     loadMCMC : bool, optional
         If the MCMC samples are to be loaded from the "fname" file. The default is False.
-    fname : string, optional
-        The name of the file where the samples are loaded from. The default is None.
+    fname : string or list of strings, optional
+        The name (names) of the file (files) where the samples are loaded from. The default is None.
     save_emulator : bool, optional
         If the emulator is to be saved. The default is False.
     load_emulator : bool, optional
@@ -388,7 +401,11 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
 
     samples = None
     if loadMCMC:
-        samples = np.loadtxt(fname)
+        if np.size(fname) > 1:
+            samples = []
+            for fname in fname:
+                samples += [np.loadtxt(fname)]
+        else: samples = np.loadtxt(fname)
     elif not loadMCMC and not create_emulator:
         print("No emulator. No sampling.")
     else:
@@ -455,8 +472,8 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
         If the MCMC samples are to be saved. The default is False
     loadMCMC : bool, optional
         If the MCMC samples are to be loaded from the "fname" file. The default is False.
-    fname : string, optional
-        The name of the file where the samples are loaded from. The default is None.
+    fname : string or list of strings, optional
+        The name (names) of the file (files) where the samples are loaded from. The default is None.
     save_emulator : bool, optional
         If the emulator is to be saved. The default is False.
     load_emulator : bool, optional
@@ -633,9 +650,13 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
 
     samples = None
     if loadMCMC:
-        samples = np.loadtxt(fname)
+        if np.size(fname) > 1:
+            samples = []
+            for fname in fname:
+                samples += [np.loadtxt(fname)]
+        else: samples = np.loadtxt(fname)
     elif not loadMCMC and not create_emulator:
-        print("No emulator. No sampling.")
+        print("No emulator nor loading samples.")
     else:
         # import emcee.moves
         # moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
@@ -648,32 +669,32 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
 
 
 if __name__ == '__main__':
-    main_noC(1, 0, fname='data/MCMC/MCMC_noC_cov.dat',
+    main_noC(0, 1, fname=('data/MCMC/MCMC_noC.dat', 'data/MCMC/MCMC_noC_cov.dat'),
              save_emulator=0, load_emulator=1,
              pcacomps=10, n_restarts=10, extra_std=[0.00035],
              nwalkers=200, nwalks=1000, burn=500, flat=True,
              zoom='auto',  # plot_fname='kuvat/noC_temp.png',
              zscore=1, only_z=0,
-             create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+             create_emulator=0, emu_std=0, emu_cov=1, cov=0,
              more_plots=False)
 
-    # main_C(1, 0, fname='data/MCMC/MCMC_wC.dat',
-    #        save_emulator=0, load_emulator=1,
-    #        pcacomps=10, n_restarts=10, extra_std=[[0.00025], [0.00035]],
-    #        nwalkers=200, nwalks=1000, burn=500, flat=True,
-    #        zoom='auto',
-    #        zscore=1, only_z=0,
-    #        create_emulator=1, emu_std=0, emu_cov=1, cov=0,
-    #        more_plots=False)
+    main_C(0, 1, fname=('data/MCMC/MCMC_wC.dat', 'data/MCMC/MCMC_wC_cov.dat'),
+           save_emulator=0, load_emulator=1,
+           pcacomps=10, n_restarts=10, extra_std=[[0.00025], [0.00035]],
+           nwalkers=200, nwalks=1000, burn=500, flat=True,
+           zoom='auto',
+           zscore=0, only_z=0,
+           create_emulator=0, emu_std=0, emu_cov=1, cov=0,
+           more_plots=False)
 
-    # main_C_gamma(1, 0, fname='data/MCMC/MCMC_wCgamma.dat',
-    #              save_emulator=0, load_emulator=1,
-    #              pcacomps=10, n_restarts=10, extra_std=[[0.0055], [0.0075]],
-    #              nwalkers=200, nwalks=1000, burn=500, flat=True,
-    #              zoom='auto',  # plot_fname='kuvat/wC_temp.png',
-    #              zscore=1, only_z=0,
-    #              create_emulator=1, emu_std=0, emu_cov=1, cov=0,
-    #              more_plots=False)
+    main_C_gamma(0, 1, fname=('data/MCMC/MCMC_wCgamma.dat', 'data/MCMC/MCMC_wCgamma_cov.dat'),
+                 save_emulator=0, load_emulator=1,
+                 pcacomps=10, n_restarts=10, extra_std=[[0.0055], [0.0075]],
+                 nwalkers=200, nwalks=1000, burn=500, flat=True,
+                 zoom='auto',  # plot_fname='kuvat/wC_temp.png',
+                 zscore=1, only_z=0,
+                 create_emulator=0, emu_std=0, emu_cov=1, cov=0,
+                 more_plots=False)
 
     # For getting notification when done. Needs plyer module.
     while True:

@@ -9,6 +9,7 @@ import numpy as np
 import PCA_emulator as pca_emu
 import MCMC
 import matplotlib.pyplot as plt
+import corner
 
 
 def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
@@ -20,10 +21,11 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
 
     Parameters
     ----------
-    samples : array
-        chain of parameters from MCMC.
+    samples : array or list of arrays
+        The chain of parameters from MCMC. Can be a list of several chains for plotting multiple
+        posteriors to the same figure.
     par_limits : array, optional
-        Limits of parameters. The default is None.
+        Limits of the parameters in the posterior. The default is None.
     labels : array, optional
         Names of each parameter. The default is None.
     zoom : string, optional
@@ -51,83 +53,76 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
         Returns the figure, the parameter limits and the axises of the figure.
 
     """
-    nparameters = samples.shape[1]
-    if fig is None: fig, ax = plt.subplots(nparameters, nparameters, subplot_kw=dict(box_aspect=1), figsize=(10, 10))
     if suptitle is not None: fig.suptitle(suptitle, y=0.95)
-
-    # How dense histograms are
-    nbins = int(samples.shape[0] / 100)
 
     # Automatically find relevant region.
     if zoom == 'auto':
-        mean = np.mean(samples, axis=0)
-        std = np.std(samples, axis=0)
-        par_limits = []
-        # Change for wider distribution region.
-        wide = 3
-        for i in range(nparameters):
-            par_limits += [[mean[i] - wide * std[i], mean[i] + wide * std[i]]]
-        par_limits = np.array(par_limits)
+        par_limits = find_region(samples)
 
-    # Cuts parameter region and limits samples to samples from that region.
-    if zoom is not None:
-        nbins = 200
-        cut = []
-        for i in range(nparameters):
-            cut += [(par_limits[i, 0] < samples[:, i]) & (samples[:, i] < par_limits[i, 1])]
-        cut = np.prod(np.array(cut), axis=0).astype(bool)
-        samples = samples[cut, :]
-        par_limits = [[np.min(samples[:, i]), np.max(samples[:, i])] for i in range(nparameters)]
-        mean = np.mean(samples, axis=0)
-        std = np.std(samples, axis=0)
+    if not isinstance(samples, np.ndarray):
+        nsamp = len(samples)
+        colors = ("tab:" + c for c in ("blue", "red", "orange", "green", "purple", "pink", "gray"))
+        figure = corner.corner(samples[0], labels=labels, bins=100, smooth=1.5, smooth1d=1,
+                               plot_datapoints=False, range=par_limits, color=next(colors))
+        for i in range(1, nsamp):
+            figure = corner.corner(samples[i], bins=100, smooth=1.5, smooth1d=1,
+                                   plot_datapoints=False, range=par_limits, fig=figure, color=next(colors))
+    else:
+        figure = corner.corner(samples, bins=100, labels=labels, smooth=1.5, smooth1d=1,
+                               show_titles=True, plot_datapoints=False,
+                               range=par_limits)
 
-    # Creating histogram plots and setting limits for axes
-    for i in range(nparameters):
-        ax[i, i].hist(samples[:, i], nbins, color="k", histtype="step", density=True, linewidth=0.7)
-        # x = np.linspace(mean[i] - 3*std[i], mean[i] + 3*std[i], 100)
-        # ax[i,i].plot(x, stats.norm.pdf(x, mean[i], std[i]))
-        if zoom is not None:
-            ax[i, i].axvline(mean[i], color='r', linestyle='dashed', linewidth=0.9, alpha=0.8)
-            ax[i, i].axvline(mean[i] + std[i], color='k', linestyle='dashed', linewidth=0.5, alpha=0.8)
-            ax[i, i].axvline(mean[i] - std[i], color='k', linestyle='dashed', linewidth=0.5, alpha=0.8)
-            ax[i, i].set_title('Mean: {:.3f}, Std: {:.3f}'.format(mean[i], std[i]), fontsize=10)
-        # 2d-histograms and ylimits
-        for j in range(i + 1, nparameters):
-            ax[j, i].hist2d(samples[:, i], samples[:, j], bins=200, cmap='RdBu_r')
-            ax[j, i].set_ylim(par_limits[j])
-        # xlimits
-        for j in range(i, nparameters):
-            ax[j, i].set_xlim(par_limits[i])
-        for j in range(nparameters):
-            ax[i, j].grid('on', linestyle=':', color='gray', alpha=0.1)
+    # for axi in fig.get_axes():
+    #     axi.label_outer()
 
-    # Setting names
-    if labels is not None:
-        for i in range(nparameters):
-            ax[nparameters - 1, i].set_xlabel(labels[i])
-            if i != 0:
-                ax[i, 0].set_ylabel(labels[i])
-
-    # Deletes upper empty off diagonal panels.
-    for i in range(nparameters):
-        for j in range(i + 1, nparameters):
-            fig.delaxes(ax[i][j])
-
-    for axi in fig.get_axes():
-        axi.label_outer()
-
-    # set the spacing between subplots
-    # plt.tight_layout()
-    plt.subplots_adjust(wspace=-0.02, hspace=0.05)
-
-    # Saving figure
+    # Saving the figure
     if save:
         if fname is not None:
             fig.savefig(fname)
         else:
-            fig.savefig('posterior_distribution.pdf')
+            figure.savefig('posterior_distribution.pdf')
     # if suptitle is not None and save: fig.savefig('suptitle+'.png')
-    return fig, np.array(par_limits), ax
+    return figure, np.array(par_limits), ax
+
+
+def find_region(samples):
+    """
+    Find automatically the relevant region for the posterior distribution.
+
+    Parameters
+    ----------
+    samples : array or list of arrays
+        The chain of parameters from MCMC. Can be a list of several chains from several posteriors.
+
+    Returns
+    -------
+    ndarray
+        Numpy array of parameter limits for relevant region.
+    """
+    if not isinstance(samples, np.ndarray):
+        nsamp = len(samples)
+        parlims = []
+        for i in range(nsamp):
+            parlims.append(find_region(samples[i]))
+
+        # Find the minimum and maximum values element-wise across all arrays
+        min_pars = np.min(parlims, axis=0)
+        max_pars = np.max(parlims, axis=0)
+
+        return np.vstack((min_pars[:, 0], max_pars[:, 1])).T
+    nparameters = samples.shape[1]
+    mean = []
+    std = []
+    for i in range(nparameters):
+        m = np.percentile(samples[:, i], [16, 50, 84])
+        mean.append(m[1])
+        std.append((m[2] - m[0]) / 2)
+    par_limits = []
+    # Change for wider distribution region.
+    wide = 3
+    for i in range(nparameters):
+        par_limits += [[mean[i] - wide * std[i], mean[i] + wide * std[i]]]
+    return np.array(par_limits)
 
 
 def nuisance_profiling(D, T, beta, uncorr):
@@ -587,9 +582,9 @@ def parameter_limits(n):
     Qs02_limits = [0.1, 5]
     mc_limits = [1, 2]  # GeV
     gamma_limits = [0.5, 2]
-    if n == 5:
-        return np.array([sigma0_limits, lambda_limits, Qs02_limits, gamma_limits, mc_limits])
-    return np.array([sigma0_limits, lambda_limits, Qs02_limits, mc_limits])[:n]
+    # if n == 5:
+    #     return np.array([sigma0_limits, lambda_limits, Qs02_limits, gamma_limits, mc_limits])
+    return np.array([sigma0_limits, lambda_limits, Qs02_limits, mc_limits, gamma_limits])[:n]
 
 
 def parameter_names(n):
@@ -607,9 +602,7 @@ def parameter_names(n):
         The parameter names with units.
 
     """
-    if n == 5:
-        return [r'$\sigma_0$ [mb]', r'$\lambda$', '${Q_{s0}}^2$ [GeV$^2$]', r'$\gamma$', '$m_c$ [GeV]']
-    return [r'$\sigma_0$ [mb]', r'$\lambda$', '${Q_{s0}}^2$ [GeV$^2$]', '$m_c$ [GeV]'][:n]
+    return [r'$\sigma_0$ [mb]', r'$\lambda$', '${Q_{s0}}^2$ [GeV$^2$]', '$m_c$ [GeV]', r'$\gamma$'][:n]
 
 
 def make_emulator(X, Y, par_limits, pcacomps, whiten=True, plot_expl_var=False, **kwargs):

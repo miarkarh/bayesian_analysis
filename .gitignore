@@ -2,3 +2,12 @@
 .spyproject
 __pycache__
 plots
+tulokset
+
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.pdf
+
+untitled*

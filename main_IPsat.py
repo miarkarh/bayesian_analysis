@@ -61,8 +61,8 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
         If the MCMC samples are to be saved. The default is False
     loadMCMC : bool, optional
         If the MCMC samples are to be loaded from the "fname" file. The default is False.
-    fname : string, optional
-        The name of the file where the samples are loaded from. The default is None.
+    fname : string or list of strings, optional
+        The name (names) of the file (files) where the samples are loaded from. The default is None.
     save_emulator : bool, optional
         If the emulator is to be saved. The default is False.
     load_emulator : bool, optional
@@ -247,7 +247,11 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
 
     samples = None
     if loadMCMC:
-        samples = np.loadtxt(fname)
+        if np.size(fname) > 1:
+            samples = []
+            for fname in fname:
+                samples += [np.loadtxt(fname)]
+        else: samples = np.loadtxt(fname)
     elif not loadMCMC and not create_emulator:
         print("No emulator. No sampling.")
     else:
@@ -322,13 +326,13 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
 
 
 if __name__ == '__main__':
-    mainIPsat(1, 0, fname="IPsat/data/MCMC/MCMC_IPsat_hera_II_cov.dat",
+    mainIPsat(0, 1, fname=("IPsat/data/MCMC/MCMC_IPsat_hera_II.dat", "IPsat/data/MCMC/MCMC_IPsat_hera_II_cov.dat"),
               save_emulator=0, load_emulator=1,
               pcacomps=10, n_restarts=10, extra_std=[[0.00085], [0.00055]],
               nwalkers=200, nwalks=1000, burn=500, flat=True,
               zoom='auto',  # plot_fname='kuvat/wC_temp.png',
               zscore=1, only_z=0,
-              create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+              create_emulator=0, emu_std=0, emu_cov=1, cov=1,
               more_plots=False)
 
     # For getting notification when done. Needs plyer module.
