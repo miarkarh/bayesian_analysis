@@ -78,7 +78,7 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
     # Saving the figure
     if save:
         if fname is not None:
-            fig.savefig(fname)
+            figure.savefig(fname)
         else:
             figure.savefig('posterior_distribution.pdf')
     # if suptitle is not None and save: fig.savefig('suptitle+'.png')
