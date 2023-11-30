@@ -373,6 +373,54 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
     return D_shifted
 
 
+def cut_samples(samples, par_limits):
+    """
+    Cut the samples given some parameter limitations.
+
+    Parameters
+    ----------
+    samples : ndarray
+        The parameter samples to be cut.
+    par_limits : list or ndarray
+        The limitations for parameters.
+
+    Returns
+    -------
+    ndarray
+        Cut down samples.
+
+    """
+    cut = []
+    for i in range(par_limits.shape[0]):
+        cut.append((par_limits[i, 0] < samples[:, i]) & (samples[:, i] < par_limits[i, 1]))
+    cut = np.prod(np.array(cut), axis=0).astype(bool)
+    return samples[cut, :]
+
+
+def pick_samples(samples, N, par_limits=None):
+    """
+    Pick N random samples from the samples with some parameter limits (optional).
+
+    Parameters
+    ----------
+    samples : ndarray
+        The parameter samples to be cut.
+    N : int
+        How many samples are picked from samples.
+    par_limits : list or ndarray, optional
+        The limitations for parameters. Can be used to cut down samples to some exact region.
+        The default is None.
+
+    Returns
+    -------
+    ndarray
+        N random samples.
+
+    """
+    if par_limits is not None: samples = cut_samples(samples, par_limits)
+    return samples[np.random.choice(samples.shape[0], N, False)]
+
+
 def hundred_samples(samples, par_limits, emulator, x, sigma_r_exp, sigma_r_err, save=False):
     """
     This does not work yeat as intended. Plot the emulator with hundred parametisations.
@@ -400,13 +448,7 @@ def hundred_samples(samples, par_limits, emulator, x, sigma_r_exp, sigma_r_err, 
 
     """
     # 100 samples from posterior. Then calculated sigma_r with them, then average, then plotting.
-    cut = []
-    for i in range(par_limits.shape[0]):
-        cut += [(par_limits[i, 0] < samples[:, i]) & (samples[:, i] < par_limits[i, 1])]
-    cut = np.prod(np.array(cut), axis=0)
-    hundpars = samples[cut.astype(bool), :]
-    # TODO: check if hundpars is really 100 different samples.
-    hundpars = hundpars[np.random.choice(len(hundpars), 100, False)]
+    hundpars = pick_samples(samples, 100)
     # np.save("light_posterior_hundred_samples", hundpars)
     emu_sigma = emulator(hundpars)[0]
     avg_sigma_r = np.mean(emu_sigma, axis=0)
