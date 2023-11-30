@@ -418,6 +418,7 @@ def pick_samples(samples, N, par_limits=None):
 
     """
     if par_limits is not None: samples = cut_samples(samples, par_limits)
+    # same as samples[np.random.randint(0, samples.shape[0], 100)] but without copies.
     return samples[np.random.choice(samples.shape[0], N, False)]
 
 
