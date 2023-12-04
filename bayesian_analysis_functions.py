@@ -424,7 +424,7 @@ def pick_samples(samples, N, par_limits=None):
 
 def hundred_samples(samples, par_limits, emulator, x, sigma_r_exp, sigma_r_err, save=False):
     """
-    This does not work yeat as intended. Plot the emulator with hundred parametisations.
+    This does not work yet as intended. Plot the emulator with hundred parametisations.
 
     Parameters
     ----------
