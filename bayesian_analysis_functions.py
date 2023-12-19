@@ -223,7 +223,7 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
 
     Parameters
     ----------
-    D : TYPE
+    D : array
         Experimental data.
     T : array
         The model data calculated with parameters which were optained without covariance accounted.
@@ -316,7 +316,9 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
 
         lw = 1
         plt.plot(x, model, label="Model", lw=lw)
+        # plt.fill_between(x, model + 2 * model_err, model - 2 * model_err, alpha=0.2, label=r"2$\sigma$ margin")
         plt.plot(x, model_cov, label="Model with cov", linestyle='--', lw=lw)
+        # plt.fill_between(x, model_cov + 2 * model_cov_err, model_cov - 2 * model_cov_err, alpha=0.2, label=r"2$\sigma$ margin")
 
         plt.legend()
         # plt.savefig("kuvat/agains data/Q2_3,5_lines.png")
@@ -334,31 +336,19 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
     print(r"$\chi_{min}^2$")
     print(minchi2)
 
-    p1 = np.where(Q2 == 3.5)
-    p2 = np.where(Q2 == 18)
-
-    x1 = x[p1]
-    x2 = x[p2]
-    order1 = np.argsort(x1)
-    order2 = np.argsort(x2)
-    x1 = x1[order1]
-    x2 = x2[order2]
-    # Tätyy saada edellinen yleisempään muotoon
-    D1 = D[p1][order1]
-    D2 = D[p2][order2]
-    D1_sys = np.sqrt(np.sum(beta[p1][order1]**2, axis=1))
-    D2_sys = np.sqrt(np.sum(beta[p2][order2]**2, axis=1))
-    T01 = T0[p1][order1]
-    T02 = T0[p2][order2]
-    T11 = T1[p1][order1]
-    T12 = T1[p2][order2]
-    D_sf1 = D_shifted[p1][order1]
-    D_sf2 = D_shifted[p2][order2]
+    x1, D1, beta1, T01, T11, D_sf1 = cut_by_Q2_and_sort_by_x(
+        Q2, x, 3.5, D, beta, T0, T1, D_shifted)[1:]
+    x2, D2, beta2, T02, T12, D_sf2 = cut_by_Q2_and_sort_by_x(
+        Q2, x, 18, D, beta, T0, T1, D_shifted)[1:]
+    D1_sys = np.sqrt(np.sum(beta1**2, axis=1))
+    D2_sys = np.sqrt(np.sum(beta2**2, axis=1))
 
     # plt.figure()
     D_er_sys = np.sqrt(np.sum(beta**2, axis=1))
 
-    plot_data(x, D, D_er_sys, D_shifted, labels=[r"$\sigma_r$ with sys err", r"$\sigma_r$ shifted"], title="Data vs shifted")
+    plot_data(x, D, D_er_sys, D_shifted,
+              labels=[r"$\sigma_r$ with sys err", r"$\sigma_r$ shifted"],
+              title="Data vs shifted")
     # plt.savefig("kuvat/agains data/Data vs shifted.png")
 
     title = "$Q^2$ = 3.5 $GeV^2$"
@@ -422,14 +412,16 @@ def pick_samples(samples, N, par_limits=None):
     return samples[np.random.choice(samples.shape[0], N, False)]
 
 
-def hundred_samples(samples, par_limits, emulator, x, sigma_r_exp, sigma_r_err, save=False):
+def samples_plot(samples, N, par_limits, emulator, x, Q2, sigma_r_exp, sigma_r_err, beta=0, uncorr=0, save=False):
     """
-    This does not work yet as intended. Plot the emulator with hundred parametisations.
+    Plot the emulator using N parameters from the posterior.
 
     Parameters
     ----------
     samples : array
-        Parameter samples gotten from MCMC.
+        The parameter samples gotten from MCMC.
+    N : int
+        How many parameter samples are taken from samples.
     par_limits : array
         Parameters' limits
     emulator : function
@@ -449,35 +441,80 @@ def hundred_samples(samples, par_limits, emulator, x, sigma_r_exp, sigma_r_err, 
 
     """
     # 100 samples from posterior. Then calculated sigma_r with them, then average, then plotting.
-    hundpars = pick_samples(samples, 100)
+    pars = pick_samples(samples, 100)
     # np.save("light_posterior_hundred_samples", hundpars)
-    emu_sigma = emulator(hundpars)[0]
-    avg_sigma_r = np.mean(emu_sigma, axis=0)
-    std_sigma_r = np.std(emu_sigma, axis=0)
+    emu_sigma = emulator(pars)
 
-    plt.figure(figsize=(8, 6))
-    plt.title('100 random samples average from posterior')
-    plt.errorbar(x, sigma_r_exp, sigma_r_err, fmt='*', markersize=1.5, elinewidth=0.5, capsize=1, color='k', label="data", alpha=0.4)
-    plt.errorbar(x, avg_sigma_r, yerr=std_sigma_r, fmt='o', markersize=1, elinewidth=0.5, capsize=1, label=r"$\sigma_r$ from posterior")
+    # If emulator returns standard deviations or covariance too
+    if isinstance(emu_sigma, list) or isinstance(emu_sigma, tuple):
+        emu_sigma = emu_sigma[0]
+    elif np.ndim(emu_sigma) > 2: emu_sigma = emu_sigma[0]
+
+    m = np.percentile(emu_sigma, [16, 50, 84], axis=0)
+    # avg_sigma_r = np.mean(emu_sigma, axis=0)
+    # std_sigma_r = np.std(emu_sigma, axis=0)
+    avg_sigma_r = m[1]
+    std_sigma_r = ((m[2] - m[0]) / 2)
+    # print(np.max(100 * (avg_sigma_r - mens) / avg_sigma_r))
+    # print(np.max(100 * (std_sigma_r - stdssdf) / std_sigma_r))
+    nuis = nuisance_profiling(sigma_r_exp, avg_sigma_r, beta, uncorr)
+    sigma_r_exp = sigma_r_exp - np.sum(beta * nuis, axis=1)
+
+    plt.figure(figsize=(9, 7))
+    plt.title(str(N) + ' random samples from cov posterior against shifted data.')
+
+    def plot(x, sigma_r_exp, sigma_r_err, avg_sigma_r, std_sigma_r, Q2_val, temp=1):
+        if temp == 0: plt.errorbar(x, sigma_r_exp, sigma_r_err, color='k', alpha=0.5, fmt='o',
+                                   markersize=2, capsize=2, label="Shifted HERA data")
+        else: plt.errorbar(x, sigma_r_exp, sigma_r_err, color='k', alpha=0.5, fmt='o',
+                           markersize=2, capsize=2)
+        plt.plot(x, avg_sigma_r, label="$Q^2$ = " + str(Q2_val) + " GeV$^2$")
+        # label=r"$\sigma_r$ from posterior")
+        plt.fill_between(x, avg_sigma_r + 2 * std_sigma_r,
+                         avg_sigma_r - 2 * std_sigma_r, alpha=0.4)
+        # label=r"2$\sigma$ margin")
+
+    Q2vals = [45.0, 27.0, 15.0, 8.5, 4.5, 2.0]
+    temp = 0
+    for val in Q2vals:
+        args = cut_by_Q2_and_sort_by_x(Q2, x, val, sigma_r_exp, sigma_r_err,
+                                       avg_sigma_r, std_sigma_r)[1:]
+        plot(*args, val, temp)
+        temp += 1
+
     plt.xscale('log')
-    plt.xlabel('x')
+    plt.xlabel('$x_{Bj}$')
     plt.ylabel(r'$\sigma_r$')
     plt.grid(True, alpha=0.4)
     plt.legend()
     plt.show()
 
     if save:
-        np.savetxt("data/temp/hund_samps.dat", hundpars)
+        np.savetxt("data/temp/hund_samps.dat", pars)
 
 
-def z_score(pred, pred_std, true_model, zoom=False, save_fig=False, fname='z_score.png'):
+def cut_by_Q2_and_sort_by_x(Q2, x, Q2_val, *other_vars_to_sort):
+    Q2lim = Q2 == Q2_val
+    Q2 = Q2[Q2lim]
+    x = x[Q2lim]
+    sort = np.argsort(x)
+    Q2 = Q2[sort]
+    x = x[sort]
+    vars_ = []
+    for var in other_vars_to_sort:
+        vars_.append(var[Q2lim][sort])
+    return Q2, x, *vars_
+
+
+def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
+            fname='z_score.png', pred_mean=None):
     """
-    Generate z-score histogram.
+    Generate a z-score histogram.
 
     Parameters
     ----------
     pred : array
-        Predictions.
+        The sampled predictions from emulator.
     pred_std : array
         Standard deviations of predictions.
     true_model : array
@@ -490,22 +527,38 @@ def z_score(pred, pred_std, true_model, zoom=False, save_fig=False, fname='z_sco
         If z-score is to be saved. The default is False.
     fname : string, optional
         Name of the saved plot file, if save_fig is True. The default is 'z_score.png'.
+    pred_mean : array
+        The used predicted values from emulator. For example returned means from emulator.
 
     Returns
     -------
     None.
 
     """
-    z = [(pred[:, i, :] - true_model) / pred_std for i in range(pred.shape[1])]
+    z = [(pred_samps[:, i, :] - true_model) / pred_std
+         for i in range(pred_samps.shape[1])]
     z = np.ravel(z)
     mean = np.mean(z)
     std = np.std(z)
 
-    emu_error_perc = np.mean(np.abs(pred_std / np.mean(pred, axis=1) * 100))
-    print("mean of abs emulator stds (percent):", emu_error_perc)
+    # emu_error_perc = np.mean(np.abs(pred_std / np.mean(pred, axis=1) * 100))
+    # print("mean of abs emulator stds (percent):", emu_error_perc)
+
+    if pred_mean is None: pred_mean = np.mean(pred_samps, axis=1)
+    emu_error_perc = np.mean(np.abs((pred_mean - true_model) / pred_mean) * 100)
+    print(np.max(np.abs((pred_mean - true_model) / pred_mean) * 100))
+
+    print("<(emu - model) / emu> percent:", emu_error_perc)
+
+    # plt.figure(figsize=(4, 4))
+    # xx = np.linspace(0, np.max(pred_mean), 50)
+    # yy = xx
+    # plt.plot(xx, yy, color="orange")
+    # plt.scatter(pred_mean, true_model, s=1)
+    # plt.show()
 
     # plotting
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(4, 4))
     if zoom: rang = [-10, 10]
     else: rang = None
     plt.hist(z, 500, range=rang, density=True)  # Plot mean as a vertical line
@@ -513,11 +566,14 @@ def z_score(pred, pred_std, true_model, zoom=False, save_fig=False, fname='z_sco
     plt.axvline(mean, color='r', linestyle='dashed', linewidth=0.9, alpha=0.8)
     plt.axvline(mean + std, color='k', linestyle='dashed', linewidth=0.5, alpha=0.8)
     plt.axvline(mean - std, color='k', linestyle='dashed', linewidth=0.5, alpha=0.8)
-    plt.title('Mean: {:.3f}, Std: {:.3f} \n Mean of abs emulator stds (percent): {:.4f}'.format(mean, std, emu_error_perc), fontsize=10)
+    plt.title('Mean: {:.3f}, Std: {:.3f} \n <(emu - model) / emu> percent: {:.4f}'.format(mean, std, emu_error_perc), fontsize=10)
 
-    xl = np.linspace(-5, 5, 100)
+    xl = np.linspace(-4, 4, 100)
     plt.plot(xl, 1 / np.sqrt(2 * np.pi) * np.exp(-1 / 2 * xl**2), label='N(0,1)')
-    plt.xlabel('z-score', fontsize=11)
+    # plt.xlabel('z-score', fontsize=11)
+    plt.xticks(np.arange(-8, 10, 2))
+    plt.xlim([-8, 8])
+    plt.ylim([0.0, 0.5])
     plt.legend()
     # Saving figure
     if save_fig:
@@ -716,5 +772,7 @@ def start_sampling(par_limits, log_prob_emulator, saveMCMC=False, fname='MCMC_sa
     samples = None
     samples = MCMC.mcmc_sampling(par_limits, log_prob_emulator, *args, **kwargs)
     if saveMCMC:
-        np.savetxt(fname, samples)
+        par_names = parameter_names(par_limits.shape[0])
+        np.savetxt(fname, samples, header=' '.join(par_names), comments='# ',
+                   delimiter=' ')
     return samples

@@ -191,8 +191,8 @@ def sigma_T(x, Q2, theta, Zf, mf, A=1, dip_theory='GBW'):
         # The function for integral. \int dr^2 = \int dr r \int dtheta = \int dr r 2pi
         transverse = lambda b, r, z: np.sum(Psi_T_abs_square(r, z)) * sigma_dip(r, x, theta, b, A=A, dip_theory="Nuke") * r * b * 2 * np.pi
         b_to_inf_trans = lambda b, r, z: A * T_A(b) * np.sum(Psi_T_abs_square(r, z)) * sigma_dip(r, x, theta, b, A=A, dip_theory="GBW") * r * b * 2 * np.pi
-        return (integrate.tplquad(transverse, 0, 1, 0, rmax, 0, bmax, epsabs=quadtol, epsrel=quadtol)[0]
-                + integrate.tplquad(b_to_inf_trans, 0, 1, 0, rmax, bmax, binf, epsabs=quadtol, epsrel=quadtol)[0])
+        return (integrate.tplquad(transverse, 0, 1, 0, rmax, 0, bmax, epsabs=quadtol, epsrel=quadtol)[0] +
+                integrate.tplquad(b_to_inf_trans, 0, 1, 0, rmax, bmax, binf, epsabs=quadtol, epsrel=quadtol)[0])
 
 
 def sigma_L(x, Q2, theta, Zf, mf, A=1, dip_theory='GBW'):
@@ -240,8 +240,8 @@ def sigma_L(x, Q2, theta, Zf, mf, A=1, dip_theory='GBW'):
     longitudal = lambda b, r, z: z**2 * (1 - z)**2 * np.sum(Psi_L_abs_square(r, z)) * sigma_dip(r, x, theta, b, A=A, dip_theory="Nuke") * r * b * 2 * np.pi
     b_to_inf_longitud = lambda b, r, z: A * T_A(b) * z**2 * (1 - z)**2 * np.sum(Psi_L_abs_square(r, z)) * sigma_dip(r, x, theta, b, A=A, dip_theory="GBW") * r * b * 2 * np.pi
     # Double integral, z from 0 to 1, r from 0 to 50. 50 is aproximation of infinity. Speed depents on iterations (size) of the integral.
-    return (integrate.tplquad(longitudal, 0, 1, 0, rmax, 0, bmax, epsabs=quadtol, epsrel=quadtol)[0]
-            + integrate.tplquad(b_to_inf_longitud, 0, 1, 0, rmax, bmax, binf, epsabs=quadtol, epsrel=quadtol)[0])
+    return (integrate.tplquad(longitudal, 0, 1, 0, rmax, 0, bmax, epsabs=quadtol, epsrel=quadtol)[0] +
+            integrate.tplquad(b_to_inf_longitud, 0, 1, 0, rmax, bmax, binf, epsabs=quadtol, epsrel=quadtol)[0])
 
 
 def F2(x, Q2, sigma0, lambd, Q02, A=1, dip_theory='GBW'):
@@ -299,7 +299,7 @@ def sigma_r(x, Q2, y, sigma0, lambd, Q02, mc=None):
     Q2 : float (or int) [GeV^2]
         Q^2. The virtuality of the photon or virtual photons "mass" squared.
     y : float
-        Elasticity.
+        Inelasticity.
     sigma0 : float [mb]
         sigma_0. Proportional to the transverse size of the proton.
     lambd : float
@@ -412,3 +412,7 @@ T_A = interp1d(bb, TA_bb, bounds_error=False, fill_value=0)
 
 normtest = integrate.quad(lambda b: T_A(b) * b * 2 * np.pi, 0, np.inf)[0]
 assert np.isclose(normtest, 1.0, 1e-2, 1e-2), "normalisation failed for T_A: normalisation resulted" + str(normtest)
+
+y1 = 2.0 / (225**2 * 4.64e-05)
+print(y1)
+print(sigma_r(4.64e-05, 2.0, y1, 15.02, 0.31, 2.06))

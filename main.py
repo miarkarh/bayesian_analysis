@@ -19,7 +19,8 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
              pcacomps=5, n_restarts=1, extra_std=0,
              nwalkers=100, nwalks=500, burn=200, flat=False,
              zoom=None, plot_save=False, plot_fname=None,
-             zscore=False, z_zoom=False, z_save_fig=False, zfname='z_score.png', only_z=False,
+             zscore=False, z_zoom=False, only_z=False,
+             z_save_fig=False, zfname='z_score.png',
              create_emulator=True, whiten=True,
              emu_std=False, emu_cov=False, cov=False,
              more_plots=True):
@@ -116,7 +117,7 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
 
     # If one does not want to calculate with covariance matrix
     else:
-        sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))  # should be same as uncorr
+        sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
         print("Mean of experimental error (percent):")
         print(np.mean(sigma_r_err / sigma_r_exp * 100))
         # This is for that covariance is not used later
@@ -146,15 +147,16 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
             model = np.loadtxt("data/testing data/sigma_r_testing_full_" + str(sample_size) + '.dat')
 
             test_samples = np.loadtxt("data/testing data/test_parameters_" + str(sample_size) + '_samples_' + str(par_limits.shape[0]) + '_pars.dat')
-            pred = pca_gpe.sample_y(test_samples, n_samples=100)
-            pred_std = pca_gpe.predict(test_samples, return_std=True, return_cov=False, extra_std=extra_std)[1]
+            pred_samps = pca_gpe.sample_y(test_samples, n_samples=100)
+            pred_mean, pred_std = pca_gpe.predict(test_samples, return_std=True, return_cov=False, extra_std=extra_std)
 
             zfname = "z_score_noC"
             if cov is not None:
                 zfname = zfname + "_with_cov"
             zfname = zfname + ".png"
 
-            baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred_samps, pred_std, model, zoom=z_zoom,
+                        save_fig=z_save_fig, fname=zfname, pred_mean=pred_mean)
             if only_z: return
 
     samples = None
@@ -185,6 +187,15 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
     if more_plots:
         # theta = [14.670, 0.306, 2.044] #nocov
         # the = [13.383, 0.318, 2.333] #wcov
+        # if cov is not None:
+        sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
+        baf.samples_plot(samples, 1000, par_limits, emulator, x, Q2, sigma_r_exp, sigma_r_err, beta, uncorr)
+        # # 100 samples from posterior. Then calculated sigma_r with them, then average, then plotting.
+        # hundpars = baf.pick_samples(samples, 100)
+        # emu_sigma = emulator(hundpars)[0]
+        # avg_sigma_r = np.mean(emu_sigma, axis=0)
+        # std_sigma_r = np.std(emu_sigma, axis=0)
+        # T = avg_sigma_r
 
         D = sigma_r_exp
         T = np.loadtxt("data/testing data/sigma_r_some_thetas_2.dat")[0]
@@ -209,7 +220,8 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
            pcacomps=5, n_restarts=1, extra_std=0,
            nwalkers=100, nwalks=500, burn=200, flat=False,
            zoom=None, plot_save=False, plot_fname=None,
-           zscore=False, z_zoom=False, z_save_fig=False, zfname='z_score.png', only_z=False,
+           zscore=False, z_zoom=False, only_z=False,
+           z_save_fig=False, zfname='z_score.png',
            create_emulator=True, whiten=True,
            emu_std=False, emu_cov=False, cov=False,
            more_plots=False):
@@ -459,7 +471,8 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
                  pcacomps=5, n_restarts=1, extra_std=0,
                  nwalkers=100, nwalks=500, burn=200, flat=False,
                  zoom=None, plot_save=False, plot_fname=None,
-                 zscore=False, z_zoom=False, z_save_fig=False, zfname='z_score.png', only_z=False,
+                 zscore=False, z_zoom=False, only_z=False,
+                 z_save_fig=False, zfname='z_score.png',
                  create_emulator=True, whiten=True,
                  emu_std=False, emu_cov=False, cov=False,
                  more_plots=False):
@@ -669,32 +682,35 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
 
 
 if __name__ == '__main__':
-    main_noC(0, 1, fname=('data/MCMC/MCMC_noC.dat', 'data/MCMC/MCMC_noC_cov.dat'),
+    main_noC(0, 1, fname=('data/MCMC/MCMC_noC_cov.dat'),
              save_emulator=0, load_emulator=1,
              pcacomps=10, n_restarts=10, extra_std=[0.00035],
              nwalkers=200, nwalks=1000, burn=500, flat=True,
              zoom='auto',  # plot_fname='kuvat/noC_temp.png',
-             zscore=1, only_z=0,
-             create_emulator=0, emu_std=0, emu_cov=1, cov=0,
-             more_plots=False)
+             zscore=1, only_z=1,
+             create_emulator=1, emu_std=0, emu_cov=1, cov=0,
+             more_plots=False,
+             plot_save=False, plot_fname='light_posterior.pdf')
 
-    main_C(0, 1, fname=('data/MCMC/MCMC_wC.dat', 'data/MCMC/MCMC_wC_cov.dat'),
-           save_emulator=0, load_emulator=1,
-           pcacomps=10, n_restarts=10, extra_std=[[0.00025], [0.00035]],
-           nwalkers=200, nwalks=1000, burn=500, flat=True,
-           zoom='auto',
-           zscore=0, only_z=0,
-           create_emulator=0, emu_std=0, emu_cov=1, cov=0,
-           more_plots=False)
+    # main_C(0, 1, fname=('data/MCMC/MCMC_wC.dat', 'data/MCMC/MCMC_wC_cov.dat'),
+    #        save_emulator=0, load_emulator=1,
+    #        pcacomps=10, n_restarts=10, extra_std=[[0.00025], [0.00035]],
+    #        nwalkers=200, nwalks=1000, burn=500, flat=True,
+    #        zoom='auto',
+    #        zscore=1, only_z=1,
+    #        create_emulator=1, emu_std=0, emu_cov=1, cov=0,
+    #        more_plots=False,
+    #        plot_save=False, plot_fname='charm_posterior.pdf')
 
-    main_C_gamma(0, 1, fname=('data/MCMC/MCMC_wCgamma.dat', 'data/MCMC/MCMC_wCgamma_cov.dat'),
-                 save_emulator=0, load_emulator=1,
-                 pcacomps=10, n_restarts=10, extra_std=[[0.0055], [0.0075]],
-                 nwalkers=200, nwalks=1000, burn=500, flat=True,
-                 zoom='auto',  # plot_fname='kuvat/wC_temp.png',
-                 zscore=1, only_z=0,
-                 create_emulator=0, emu_std=0, emu_cov=1, cov=0,
-                 more_plots=False)
+    # main_C_gamma(0, 1, fname=('data/MCMC/MCMC_wCgamma.dat', 'data/MCMC/MCMC_wCgamma_cov.dat'),
+    #              save_emulator=0, load_emulator=1,
+    #              pcacomps=10, n_restarts=10, extra_std=[[0.0055], [0.0075]],
+    #              nwalkers=200, nwalks=1000, burn=500, flat=True,
+    #              zoom='auto',  # plot_fname='kuvat/wC_temp.png',
+    #              zscore=1, only_z=1,
+    #              create_emulator=1, emu_std=0, emu_cov=1, cov=0,
+    #              more_plots=False,
+    #              plot_save=False, plot_fname='gamma_posterior.pdf')
 
     # For getting notification when done. Needs plyer module.
     while True:

@@ -331,9 +331,10 @@ if __name__ == '__main__':
               pcacomps=10, n_restarts=10, extra_std=[[0.00085], [0.00055]],
               nwalkers=200, nwalks=1000, burn=500, flat=True,
               zoom='auto',  # plot_fname='kuvat/wC_temp.png',
-              zscore=1, only_z=0,
-              create_emulator=0, emu_std=0, emu_cov=1, cov=1,
-              more_plots=False)
+              zscore=1, only_z=1,
+              create_emulator=1, emu_std=0, emu_cov=1, cov=0,
+              more_plots=False,
+              plot_save=False, plot_fname='IPsat_posterior.pdf')
 
     # For getting notification when done. Needs plyer module.
     while True:
