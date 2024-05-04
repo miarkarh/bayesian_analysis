@@ -8,10 +8,12 @@ TODO: spikes from setups to same plot
 """
 import pickle
 import numpy as np
+from scipy import stats
 from plyer import notification  # For getting notification, when the run is finished.
 import time
 import probability_formulas as prob_calc
 import bayesian_analysis_functions as baf
+import setup_functions as sef
 
 
 def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
@@ -92,9 +94,9 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
     None.
 
     """
-    par_limits = baf.parameter_limits(3)
-    labels = baf.parameter_names(3)
-    light_data = baf.load_light_data()
+    par_limits = sef.parameter_limits(3)
+    labels = sef.parameter_names(3)
+    light_data = sef.load_light_data()
 
     # experimental data
     Q2, x, y, sigma_r_exp = light_data[:, 0:4].T
@@ -111,7 +113,7 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
     beta = (light_data[:, 6:-9].T * 0.01 * sigma_r_exp).T
     # beta = np.column_stack((beta, procedural))
     if cov:
-        cov = baf.make_cov(uncorr, beta)
+        cov = sef.make_cov(uncorr, beta)
         # This is for that only covariance matrix is used later
         sigma_r_err = None
 
@@ -153,10 +155,10 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
             zfname = "z_score_noC"
             if cov is not None:
                 zfname = zfname + "_with_cov"
-            zfname = zfname + ".png"
-
+            zfname = zfname + ".pdf"
+            ztitle = "Light quark setup"
             baf.z_score(pred_samps, pred_std, model, zoom=z_zoom,
-                        save_fig=z_save_fig, fname=zfname, pred_mean=pred_mean)
+                        save_fig=z_save_fig, fname=zfname, pred_mean=pred_mean, title=ztitle)
             if only_z: return
 
     samples = None
@@ -169,10 +171,10 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
     elif not loadMCMC and not create_emulator:
         print("No emulator. No sampling.")
     else:
-        samples = baf.start_sampling(par_limits, log_prob_emulator, saveMCMC, fname, nwalkers, nwalks, burn, walkers_par_labels=labels, flat=flat)
+        samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers, nwalks, burn, walkers_par_labels=labels, flat=flat)
     # Plots posterior and takes plotted axis limits.
     if samples is not None:
-        fig, post_limits, ax = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
+        fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
 
     # cut = []
     # for i in range(post_limits.shape[0]):
@@ -188,27 +190,37 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
         # theta = [14.670, 0.306, 2.044] #nocov
         # the = [13.383, 0.318, 2.333] #wcov
         # if cov is not None:
-        sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
-        baf.samples_plot(samples, 1000, par_limits, emulator, x, Q2, sigma_r_exp, sigma_r_err, beta, uncorr)
+        if create_emulator:
+            if isinstance(samples, list): sampless = samples[1]
+            sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
+            print(post_limits)
+            sef.samples_plot(sampless, 1000, post_limits, emulator, x, Q2, y, sigma_r_exp, sigma_r_err)
         # # 100 samples from posterior. Then calculated sigma_r with them, then average, then plotting.
-        # hundpars = baf.pick_samples(samples, 100)
+        # hundpars = sef.pick_samples(samples, 100)
         # emu_sigma = emulator(hundpars)[0]
         # avg_sigma_r = np.mean(emu_sigma, axis=0)
         # std_sigma_r = np.std(emu_sigma, axis=0)
         # T = avg_sigma_r
 
         D = sigma_r_exp
-        T = np.loadtxt("data/testing data/sigma_r_some_thetas_2.dat")[0]
+        T = emulator(np.array([15.02, 0.31, 2.06]))[0]  # np.loadtxt("data/testing data/sigma_r_some_thetas_2.dat")[0]
         # Tcov = np.loadtxt("data/testing data/sigma_r_some_thetas_2.dat")[1]
-        Tcov = np.loadtxt("data/testing data/sigma_r_cov_par_noC.dat")  # theta = 13.711 0.312 2.217
-        baf.more_plots(D, T, Tcov, beta, uncorr, Q2, x)
+        # Tcov = np.loadtxt("data/testing data/sigma_r_cov_par_noC.dat")  # theta = 13.711 0.312 2.217
+        Tcov = emulator(np.array([13.69, 0.32, 2.27]))[0]  # Theta from cov posterior
 
-        model = lambda x: Tcov
-        # This does not matter. Just so code works.
-        theta = [0, 0, 0]
-        chi2 = prob_calc.log_likelihood(D, model, theta, cov_y=cov, model_error=False)
-        print("chi2/N nocov:")
-        print(chi2 / D.shape[0])
+        sef.more_plots(D, T, Tcov, beta, uncorr, Q2, x)
+
+        # model = lambda x: Tcov
+        # # This does not matter. Just so code works.
+        # theta = [0, 0, 0]
+        emula = lambda theta: emulator(theta)[0]
+        theta_map = stats.mode(np.round(samples[0], decimals=3))[0]
+        chi2 = lambda theta: prob_calc.log_likelihood(D, emula, theta, ystd=sigma_r_err, model_error=False)
+        print("chi2/N (MAP): ", chi2(theta_map) / D.shape[0])
+
+        theta_map = stats.mode(np.round(samples[1], decimals=3))[0]
+        chi2 = lambda theta: prob_calc.log_likelihood(D, emula, theta, cov_y=cov, model_error=False)
+        print("chi2/N wCov (MAP): ", chi2(theta_map) / D.shape[0])
 
         # sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
         # sigma_r_err = np.sqrt(np.sum(beta**2, axis=1) + uncorr**2)
@@ -293,8 +305,8 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
     None.
 
     """
-    par_limits = baf.parameter_limits(4)
-    labels = baf.parameter_names(4)
+    par_limits = sef.parameter_limits(4)
+    labels = sef.parameter_names(4)
 
     ps1 = np.loadtxt('data/training data/parameters/lhc_samples_300_wC.dat')
 
@@ -307,7 +319,7 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
     y_trainingli = ytli1
     y_trainingc = ytc1
 
-    light_data = baf.load_light_data()
+    light_data = sef.load_light_data()
 
     # exp for experimental data
     Q2li, xli, yli, sigma_r_expli = light_data[:, 0:4].T
@@ -316,7 +328,7 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
     sigma_r_errli = np.sqrt(tot_no_proc**2 + np.sum(procedural**2, axis=1))
 
     # c quark
-    cdata = baf.load_c_data()
+    cdata = sef.load_c_data()
 
     Q2c, xc, sigma_r_expc = cdata[:, 0:3].T
     # yc = Q2c / (318**2 * xc)
@@ -333,8 +345,8 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
     statli, uncli = light_data[:, 4:6].T * 0.01 * sigma_r_expli
     uncorrli = np.sqrt(statli**2 + uncli**2 + np.sum(procedural**2, axis=1))
     if cov:
-        cov_li = baf.make_cov(uncorrli, betali)
-        cov_c = baf.make_cov(uncorrc, betac)
+        cov_li = sef.make_cov(uncorrli, betali)
+        cov_c = sef.make_cov(uncorrc, betac)
         # This is for that only covariance matrix is used later
         sigma_r_errli = None
         sigma_r_errc = None
@@ -392,22 +404,28 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
             zfname = "z_score_wC"
             if cov is not None:
                 zfname = zfname + "_with_cov"
-            zfname = zfname + ".png"
+            zfname = zfname + ".pdf"
 
             print("Total emulator")
+            ztitle = "Charm setup"
             pred = emulator_draw(test_samples)
             pred_std = emulator_std(test_samples)
-            baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname,
+                        title=ztitle)
 
-            print("Light data emulator")
+            print("Light quark emulator")
+            ztitle = r"$\sigma_r \mathrm{(light \, quark)}$"
             pred = sample_y_li(test_samples)
             pred_std = emul_std_li(test_samples)
-            baf.z_score(pred, pred_std, modelli, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, modelli, zoom=z_zoom,
+                        title=ztitle)
 
-            print("Charm data emulator")
+            print("Charm quark emulator")
+            ztitle = r"$\sigma_r \mathrm{(charm \, quark)}$"
             pred = sample_y_c(test_samples)
             pred_std = emul_std_c(test_samples)
-            baf.z_score(pred, pred_std, modelc, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, modelc, zoom=z_zoom,
+                        title=ztitle)
 
             if only_z: return
 
@@ -424,12 +442,12 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
         # import emcee.moves
         # moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
         moves = None
-        samples = baf.start_sampling(par_limits, log_prob_emulator, saveMCMC, fname, nwalkers,
+        samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers,
                                      nwalks, burn, walkers_par_labels=labels, moves=moves, flat=flat)
 
     # Plots posterior and takes plotted axis limits.
     if samples is not None:
-        fig, post_limits, ax = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
+        fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
 
     if more_plots:
         # theta = 20.931 0.278 0.962 1.729 #nocov
@@ -438,20 +456,29 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
         Dli = sigma_r_expli
         Dc = sigma_r_expc
 
-        Tc = np.loadtxt("data/testing data/sigma_r_c_wC.dat")
-        Tli = np.loadtxt("data/testing data/sigma_r_c_light_wC.dat")
+        # Tc = np.loadtxt("data/testing data/sigma_r_c_wC.dat")
+        # Tli = np.loadtxt("data/testing data/sigma_r_c_light_wC.dat")
 
-        Tcovc = np.loadtxt("data/testing data/sigma_r_c_wCwcov.dat")
-        Tcovli = np.loadtxt("data/testing data/sigma_r_c_light_wCwcov.dat")
+        # Tcovc = np.loadtxt("data/testing data/sigma_r_c_wCwcov.dat")
+        # Tcovli = np.loadtxt("data/testing data/sigma_r_c_light_wCwcov.dat")
 
-        baf.more_plots(Dli, Tli, Tcovli, betali, uncorrli, Q2li, xli)
-        baf.more_plots(Dc, Tc, Tcovc, betac, uncorrc, Q2c, xc)
+        theta_ = [21.01, 0.28, 0.96, 1.72]
+        theta_cov = [18.29, 0.29, 1.14, 1.96]
+        Tli = emulatorli(np.array(theta_))[0]
+        Tc = emulatorc(np.array(theta_))[0]
+        Tcovli = emulatorli(np.array(theta_cov))[0]
+        Tcovc = emulatorc(np.array(theta_cov))[0]
+        sigma_r_errli = np.sqrt(tot_no_proc**2 + np.sum(procedural**2, axis=1))
+        sigma_r_errc = np.sqrt(uncorrc**2 + sys_erc**2)
+
+        sef.more_plots(Dli, Tli, Tcovli, betali, uncorrli, Q2li, xli)
+        sef.more_plots(Dc, Tc, Tcovc, betac, uncorrc, Q2c, xc)
 
         modli = lambda t: Tli
         modc = lambda t: Tc
 
-        cov_li = baf.make_cov(uncorrli, betali)
-        cov_c = baf.make_cov(uncorrc, betac)
+        cov_li = sef.make_cov(uncorrli, betali)
+        cov_c = sef.make_cov(uncorrc, betac)
 
         chi2li = prob_calc.log_likelihood(Dli, modli, 1, ystd=sigma_r_errli, model_error=False) / 430
         chi2licov = prob_calc.log_likelihood(Dli, modli, 1, cov_y=cov_li, model_error=False) / 430
@@ -544,10 +571,10 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
     None.
 
     """
-    par_limits = baf.parameter_limits(5)
-    labels = baf.parameter_names(5)
+    par_limits = sef.parameter_limits(5)
+    labels = sef.parameter_names(5)
 
-    light_data = baf.load_light_data()
+    light_data = sef.load_light_data()
 
     # exp for experimental data
     Q2li, xli, yli, sigma_r_expli = light_data[:, 0:4].T
@@ -557,7 +584,7 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
     sigma_r_errli = np.sqrt(tot_no_proc**2 + np.sum(procedural**2, axis=1))
 
     # c quark
-    cdata = baf.load_c_data()
+    cdata = sef.load_c_data()
 
     Q2c, xc, sigma_r_expc = cdata[:, 0:3].T
     # yc = Q2c / (318**2 * xc)
@@ -570,7 +597,7 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
     print(np.mean(np.abs(sigma_r_errli / sigma_r_expli * 100)))
     print(np.mean(np.abs(sigma_r_errc / sigma_r_expc * 100)))
 
-    ps1 = np.loadtxt('data/training data/parameters/lhc_samples_200_5par.dat')  # [::4]
+    ps1 = np.loadtxt('data/training data/parameters/lhc_samples_200_5par.dat')
 
     ytli1 = np.loadtxt('data/training data/results/sigma_r_training_200_c_light_5par.dat')
 
@@ -584,8 +611,8 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
     statli, uncli = light_data[:, 4:6].T * 0.01 * sigma_r_expli
     uncorrli = np.sqrt(statli**2 + uncli**2 + np.sum(procedural**2, axis=1))
     if cov:
-        cov_li = baf.make_cov(uncorrli, betali)
-        cov_c = baf.make_cov(uncorrc, betac)
+        cov_li = sef.make_cov(uncorrli, betali)
+        cov_c = sef.make_cov(uncorrc, betac)
         # This is for that only covariance matrix is used later
         sigma_r_errli = None
         sigma_r_errc = None
@@ -643,23 +670,29 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
             zfname = "z_score_wC"
             if cov is not None:
                 zfname = zfname + "_with_cov"
-            zfname = zfname + ".png"
+            zfname = zfname + ".pdf"
 
             print("Total emulator")
+            ztitle = "Gamma setup"
             pred = emulator_draw(test_samples)
             pred_std = emulator_std(test_samples)
-            baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname,
+                        title=ztitle)
 
-            print("Light data emulator")
+            print("Light quark emulator")
+            ztitle = r"$\sigma_r \mathrm{(light \, quark)}$"
             pred = sample_y_li(test_samples)
             pred_std = emul_std_li(test_samples)
-            baf.z_score(pred, pred_std, modelli, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, modelli, zoom=z_zoom,
+                        title=ztitle)
 
-            print("Charm data emulator")
+            print("Charm quark emulator")
+            ztitle = r"$\sigma_r \mathrm{(charm \, quark)}$"
             pred = sample_y_c(test_samples)
             pred_std = emul_std_c(test_samples)
-            baf.z_score(pred, pred_std, modelc, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
-        if only_z: return
+            baf.z_score(pred, pred_std, modelc, zoom=z_zoom,
+                        title=ztitle)
+            if only_z: return
 
     samples = None
     if loadMCMC:
@@ -674,42 +707,42 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
         # import emcee.moves
         # moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
         moves = None
-        samples = baf.start_sampling(par_limits, log_prob_emulator, saveMCMC, fname, nwalkers,
+        samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers,
                                      nwalks, burn, walkers_par_labels=labels, moves=moves, flat=flat)
-    # Plots posterior and takes plotted axis limits.
+
+    # Plots posterior.
     if samples is not None:
-        fig, post_limits, ax = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
+        fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
 
 
 if __name__ == '__main__':
-    main_noC(0, 1, fname=('data/MCMC/MCMC_noC_cov.dat'),
+    main_noC(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_noC.dat', 'data/MCMC/MCMC_noC_cov.dat'),
              save_emulator=0, load_emulator=1,
-             pcacomps=10, n_restarts=10, extra_std=[0.00035],
+             pcacomps=10, n_restarts=10,  # extra_std=[0.00035],
              nwalkers=200, nwalks=1000, burn=500, flat=True,
-             zoom='auto',  # plot_fname='kuvat/noC_temp.png',
-             zscore=1, only_z=1,
-             create_emulator=1, emu_std=0, emu_cov=1, cov=0,
-             more_plots=False,
+             zoom='auto', z_save_fig=False,
+             zscore=1, only_z=0,
+             create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+             more_plots=True,
              plot_save=False, plot_fname='light_posterior.pdf')
 
-    # main_C(0, 1, fname=('data/MCMC/MCMC_wC.dat', 'data/MCMC/MCMC_wC_cov.dat'),
+    # main_C(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_wC.dat', 'data/MCMC/MCMC_wC_cov.dat'),
     #        save_emulator=0, load_emulator=1,
-    #        pcacomps=10, n_restarts=10, extra_std=[[0.00025], [0.00035]],
+    #        pcacomps=10, n_restarts=10,  # extra_std=[[0.00025], [0.00035]],
     #        nwalkers=200, nwalks=1000, burn=500, flat=True,
-    #        zoom='auto',
-    #        zscore=1, only_z=1,
-    #        create_emulator=1, emu_std=0, emu_cov=1, cov=0,
-    #        more_plots=False,
+    #        zoom='auto', z_save_fig=False,
+    #        zscore=1, only_z=0,
+    #        create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+    #        more_plots=True,
     #        plot_save=False, plot_fname='charm_posterior.pdf')
 
-    # main_C_gamma(0, 1, fname=('data/MCMC/MCMC_wCgamma.dat', 'data/MCMC/MCMC_wCgamma_cov.dat'),
+    # main_C_gamma(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_wCgamma.dat', 'data/MCMC/MCMC_wCgamma_cov.dat'),
     #              save_emulator=0, load_emulator=1,
-    #              pcacomps=10, n_restarts=10, extra_std=[[0.0055], [0.0075]],
+    #              pcacomps=10, n_restarts=10,  # extra_std=[[0.0055], [0.0075]],
     #              nwalkers=200, nwalks=1000, burn=500, flat=True,
-    #              zoom='auto',  # plot_fname='kuvat/wC_temp.png',
-    #              zscore=1, only_z=1,
-    #              create_emulator=1, emu_std=0, emu_cov=1, cov=0,
-    #              more_plots=False,
+    #              zoom=[[15, 20], [0.26, 0.28], [1.05, 1.6], [1.03, 1.095], [1.68, 2.05]],  # plot_fname='kuvat/wC.png',
+    #              zscore=1, only_z=0,  # z_save_fig=True,
+    #              create_emulator=1, emu_std=0, emu_cov=1, cov=1,
     #              plot_save=False, plot_fname='gamma_posterior.pdf')
 
     # For getting notification when done. Needs plyer module.

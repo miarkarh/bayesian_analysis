@@ -11,6 +11,7 @@ from plyer import notification  # For getting notification, when the run is fini
 import time
 import probability_formulas as prob_calc
 import bayesian_analysis_functions as baf
+import setup_functions as sef
 
 # TODO: Maybe load data straigth from hera?
 # import urllib.request
@@ -120,7 +121,7 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
     None.
 
     """
-    names = ["m_c", "C", r"$\lambda_g$", "A_g"]
+    names = [r"$m_c$ [GeV]", "C", r"$\lambda_g$", r"$A_g$"]
     limits = np.array([[1.1, 1.8], [0.5, 10], [0.01, 0.5], [0.2, 10]])
     par_limits = limits
     labels = names
@@ -135,7 +136,7 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
     y_trainingc = traindata[:, -34:]
 
     # Load experiemtnal data
-    light_data = baf.load_light_data()
+    light_data = sef.load_light_data()
 
     # exp for experimental data
     Q2li, xli, yli, sigma_r_expli = light_data[:, 0:4].T
@@ -145,7 +146,7 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
     sigma_r_errli = np.sqrt(tot_no_proc**2 + np.sum(procedural**2, axis=1))
 
     # c quark
-    cdata = baf.load_c_data()
+    cdata = sef.load_c_data()
 
     Q2c, xc, sigma_r_expc = cdata[:, 0:3].T
     # yc = Q2c / (318**2 * xc)
@@ -162,8 +163,8 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
     statli, uncli = light_data[:, 4:6].T * 0.01 * sigma_r_expli
     uncorrli = np.sqrt(statli**2 + uncli**2 + np.sum(procedural**2, axis=1))
     if cov:
-        cov_li = baf.make_cov(uncorrli, betali)
-        cov_c = baf.make_cov(uncorrc, betac)
+        cov_li = sef.make_cov(uncorrli, betali)
+        cov_c = sef.make_cov(uncorrc, betac)
         # This is for that only covariance matrix is used later
         sigma_r_errli = None
         sigma_r_errc = None
@@ -227,22 +228,28 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
             zfname = "z_score_wC"
             if cov is not None:
                 zfname = zfname + "_with_cov"
-            zfname = zfname + ".png"
+            zfname = zfname + ".pdf"
 
             print("Total emulator")
+            ztitle = "IPsat setup"
             pred = emulator_draw(test_samples)
             pred_std = emulator_std(test_samples)
-            baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname,
+                        title=ztitle)
 
-            print("Light data emulator")
+            print("Light quark emulator")
+            ztitle = r"$\sigma_r \mathrm{(light \, quark)}$"
             pred = sample_y_li(test_samples)
             pred_std = emul_std_li(test_samples)
-            baf.z_score(pred, pred_std, modelli, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, modelli, zoom=z_zoom,
+                        title=ztitle)
 
-            print("Charm data emulator")
+            print("Charm quark emulator")
+            ztitle = r"$\sigma_r \mathrm{(charm \, quark)}$"
             pred = sample_y_c(test_samples)
             pred_std = emul_std_c(test_samples)
-            baf.z_score(pred, pred_std, modelc, zoom=z_zoom, save_fig=z_save_fig, fname=zfname)
+            baf.z_score(pred, pred_std, modelc, zoom=z_zoom,
+                        title=ztitle)
             if only_z: return
 
     samples = None
@@ -258,11 +265,11 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
         # import emcee.moves
         # moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
         moves = None
-        samples = baf.start_sampling(par_limits, log_prob_emulator, saveMCMC, fname, nwalkers,
+        samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers,
                                      nwalks, burn, walkers_par_labels=labels, moves=moves, flat=flat)
     # Plots posterior and takes plotted axis limits.
     if samples is not None:
-        fig, post_limits, ax = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
+        fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
 
     if more_plots:
         Dli = sigma_r_expli
@@ -282,9 +289,9 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
         Tcov = np.loadtxt("IPsat/data/testing/sigma_r_maxlik_cov.dat")
         Tcovli = Tcov[:-34]
         Tcovc = Tcov[-34:]
-        # baf.more_plots(np.vstack((Dli,Dc)), T, Tcov, beta, uncorr, Q2, x)
-        baf.more_plots(Dli, Tli, Tcovli, betali, uncorrli, Q2li, xli)
-        baf.more_plots(Dc, Tc, Tcovc, betac, uncorrc, Q2c, xc)
+        # sef.more_plots(np.vstack((Dli,Dc)), T, Tcov, beta, uncorr, Q2, x)
+        sef.more_plots(Dli, Tli, Tcovli, betali, uncorrli, Q2li, xli)
+        sef.more_plots(Dc, Tc, Tcovc, betac, uncorrc, Q2c, xc)
 
         modli = lambda t: Tli
         modc = lambda t: Tc
@@ -326,15 +333,15 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
 
 
 if __name__ == '__main__':
-    mainIPsat(0, 1, fname=("IPsat/data/MCMC/MCMC_IPsat_hera_II.dat", "IPsat/data/MCMC/MCMC_IPsat_hera_II_cov.dat"),
+    mainIPsat(saveMCMC=0, loadMCMC=1, fname=("IPsat/data/MCMC/MCMC_IPsat.dat", "IPsat/data/MCMC/MCMC_IPsat_cov.dat"),
               save_emulator=0, load_emulator=1,
-              pcacomps=10, n_restarts=10, extra_std=[[0.00085], [0.00055]],
+              pcacomps=10, n_restarts=10,  # extra_std=[[0.00085], [0.00055]],
               nwalkers=200, nwalks=1000, burn=500, flat=True,
               zoom='auto',  # plot_fname='kuvat/wC_temp.png',
-              zscore=1, only_z=1,
-              create_emulator=1, emu_std=0, emu_cov=1, cov=0,
-              more_plots=False,
-              plot_save=False, plot_fname='IPsat_posterior.pdf')
+              zscore=1, only_z=0, z_save_fig=0,
+              create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+              more_plots=True,
+              plot_save=False, plot_fname='IPsat_posterior_cov.pdf')
 
     # For getting notification when done. Needs plyer module.
     while True:
