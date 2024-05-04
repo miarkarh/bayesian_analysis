@@ -296,8 +296,8 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
         modli = lambda t: Tli
         modc = lambda t: Tc
 
-        cov_li = baf.make_cov(uncorrli, betali)
-        cov_c = baf.make_cov(uncorrc, betac)
+        cov_li = sef.make_cov(uncorrli, betali)
+        cov_c = sef.make_cov(uncorrc, betac)
 
         chi2li = -prob_calc.log_likelihood(Dli, modli, 1, ystd=sigma_r_errli, model_error=False) / 430
         chi2licov = -prob_calc.log_likelihood(Dli, modli, 1, cov_y=cov_li, model_error=False) / 430
