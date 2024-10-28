@@ -8,7 +8,6 @@ TODO: spikes from setups to same plot
 """
 import pickle
 import numpy as np
-from scipy import stats
 from plyer import notification  # For getting notification, when the run is finished.
 import time
 import probability_formulas as prob_calc
@@ -156,7 +155,7 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
             if cov is not None:
                 zfname = zfname + "_with_cov"
             zfname = zfname + ".pdf"
-            ztitle = "Light quark setup"
+            ztitle = "GBW"
             baf.z_score(pred_samps, pred_std, model, zoom=z_zoom,
                         save_fig=z_save_fig, fname=zfname, pred_mean=pred_mean, title=ztitle)
             if only_z: return
@@ -190,41 +189,44 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
         # theta = [14.670, 0.306, 2.044] #nocov
         # the = [13.383, 0.318, 2.333] #wcov
         # if cov is not None:
+        sampless = samples
+        if isinstance(samples, list):
+            post_limits = baf.find_region(samples[0])
+            sampless[0] = sef.cut_samples(sampless[0], post_limits)
+            post_limits = baf.find_region(samples[1])
+            sampless[1] = sef.cut_samples(sampless[1], post_limits)
+        else:
+            post_limits = baf.find_region(samples)
+            sampless = sef.cut_samples(sampless, post_limits)
         if create_emulator:
-            if isinstance(samples, list): sampless = samples[1]
+            # if isinstance(samples, list): sampless = samples[1]
             sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
-            print(post_limits)
-            sef.samples_plot(sampless, 1000, post_limits, emulator, x, Q2, y, sigma_r_exp, sigma_r_err)
-        # # 100 samples from posterior. Then calculated sigma_r with them, then average, then plotting.
-        # hundpars = sef.pick_samples(samples, 100)
-        # emu_sigma = emulator(hundpars)[0]
-        # avg_sigma_r = np.mean(emu_sigma, axis=0)
-        # std_sigma_r = np.std(emu_sigma, axis=0)
-        # T = avg_sigma_r
+            sef.samples_plot(sampless[1], 5000, post_limits, emulator, x, Q2, y, sigma_r_exp, sigma_r_err)
 
-        D = sigma_r_exp
-        T = emulator(np.array([15.02, 0.31, 2.06]))[0]  # np.loadtxt("data/testing data/sigma_r_some_thetas_2.dat")[0]
-        # Tcov = np.loadtxt("data/testing data/sigma_r_some_thetas_2.dat")[1]
-        # Tcov = np.loadtxt("data/testing data/sigma_r_cov_par_noC.dat")  # theta = 13.711 0.312 2.217
-        Tcov = emulator(np.array([13.69, 0.32, 2.27]))[0]  # Theta from cov posterior
+        Ndof = sigma_r_exp.shape[0] - 3
 
-        sef.more_plots(D, T, Tcov, beta, uncorr, Q2, x)
-
-        # model = lambda x: Tcov
-        # # This does not matter. Just so code works.
-        # theta = [0, 0, 0]
         emula = lambda theta: emulator(theta)[0]
-        theta_map = stats.mode(np.round(samples[0], decimals=3))[0]
-        chi2 = lambda theta: prob_calc.log_likelihood(D, emula, theta, ystd=sigma_r_err, model_error=False)
-        print("chi2/N (MAP): ", chi2(theta_map) / D.shape[0])
+        chi2_nocov = lambda theta: prob_calc.log_likelihood(sigma_r_exp, emula, theta, ystd=sigma_r_err, model_error=False)
+        theta_map = [14.96532493, 0.31417557, 2.07724475]  # baf.get_MAP(sampless[0], chi2_nocov)
+        print("MAP for nocov: ", theta_map)
+        print("chi2/N (MAP): ", chi2_nocov(theta_map) / Ndof)
 
-        theta_map = stats.mode(np.round(samples[1], decimals=3))[0]
-        chi2 = lambda theta: prob_calc.log_likelihood(D, emula, theta, cov_y=cov, model_error=False)
-        print("chi2/N wCov (MAP): ", chi2(theta_map) / D.shape[0])
+        cov = sef.make_cov(uncorr, beta)
+        chi2_cov = lambda theta: prob_calc.log_likelihood(sigma_r_exp, emula, theta, cov_y=cov, model_error=False)
+        theta_map_cov = [13.53738093, 0.31737713, 2.30284369]  # baf.get_MAP(sampless[1], chi2_cov)
+        print("MAP for cov: ", theta_map_cov)
+        print("chi2/N wCov (MAP): ", chi2_cov(theta_map_cov) / Ndof)
 
-        # sigma_r_err = np.sqrt(tot_noproc**2 + np.sum(procedural**2, axis=1))
-        # sigma_r_err = np.sqrt(np.sum(beta**2, axis=1) + uncorr**2)
-        # hundred_samples(samples, post_limits, emulator, x, sigma_r_exp, sigma_r_err)
+        print("MAP cov chi no cov: ", theta_map_cov)
+        print("chi2/Ndof (MAP): ", chi2_nocov(theta_map_cov) / Ndof)
+
+        print("MAP chi wcov: ", theta_map)
+        print("chi2/Ndof wCov (MAP): ", chi2_cov(theta_map) / Ndof)
+
+        T = emulator(theta_map)[0]
+        Tcov = emulator(theta_map_cov)[0]
+
+        sef.more_plots(sigma_r_exp, T, Tcov, beta, uncorr, Q2, x)
 
 
 def main_C(saveMCMC=False, loadMCMC=False, fname=None,
@@ -407,7 +409,7 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
             zfname = zfname + ".pdf"
 
             print("Total emulator")
-            ztitle = "Charm setup"
+            ztitle = "GBW+charm"
             pred = emulator_draw(test_samples)
             pred_std = emulator_std(test_samples)
             baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname,
@@ -450,47 +452,40 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
         fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
 
     if more_plots:
-        # theta = 20.931 0.278 0.962 1.729 #nocov
-        # theta with cov = 18.112 0.285 1.144 2.000 #cov
-
         Dli = sigma_r_expli
         Dc = sigma_r_expc
 
-        # Tc = np.loadtxt("data/testing data/sigma_r_c_wC.dat")
-        # Tli = np.loadtxt("data/testing data/sigma_r_c_light_wC.dat")
-
-        # Tcovc = np.loadtxt("data/testing data/sigma_r_c_wCwcov.dat")
-        # Tcovli = np.loadtxt("data/testing data/sigma_r_c_light_wCwcov.dat")
-
-        theta_ = [21.01, 0.28, 0.96, 1.72]
-        theta_cov = [18.29, 0.29, 1.14, 1.96]
-        Tli = emulatorli(np.array(theta_))[0]
-        Tc = emulatorc(np.array(theta_))[0]
-        Tcovli = emulatorli(np.array(theta_cov))[0]
-        Tcovc = emulatorc(np.array(theta_cov))[0]
         sigma_r_errli = np.sqrt(tot_no_proc**2 + np.sum(procedural**2, axis=1))
         sigma_r_errc = np.sqrt(uncorrc**2 + sys_erc**2)
-
-        sef.more_plots(Dli, Tli, Tcovli, betali, uncorrli, Q2li, xli)
-        sef.more_plots(Dc, Tc, Tcovc, betac, uncorrc, Q2c, xc)
-
-        modli = lambda t: Tli
-        modc = lambda t: Tc
-
         cov_li = sef.make_cov(uncorrli, betali)
         cov_c = sef.make_cov(uncorrc, betac)
 
-        chi2li = prob_calc.log_likelihood(Dli, modli, 1, ystd=sigma_r_errli, model_error=False) / 430
-        chi2licov = prob_calc.log_likelihood(Dli, modli, 1, cov_y=cov_li, model_error=False) / 430
+        emuli = lambda theta: emulatorli(theta)[0]
+        emuc = lambda theta: emulatorc(theta)[0]
+        chi2li = lambda theta: prob_calc.log_likelihood(Dli, emuli, theta, ystd=sigma_r_errli, model_error=False)
+        chi2licov = lambda theta: prob_calc.log_likelihood(Dli, emuli, theta, cov_y=cov_li, model_error=False)
 
-        chi2c = prob_calc.log_likelihood(Dc, modc, 1, ystd=sigma_r_errc, model_error=False) / 34
-        chi2ccov = prob_calc.log_likelihood(Dc, modc, 1, cov_y=cov_c, model_error=False) / 34
+        chi2c = lambda theta: prob_calc.log_likelihood(Dc, emuc, theta, ystd=sigma_r_errc, model_error=False)
+        chi2ccov = lambda theta: prob_calc.log_likelihood(Dc, emuc, theta, cov_y=cov_c, model_error=False)
 
-        # This needs better design on looks. A bit confusing now.
-        print("chi^2/N kokonaisvaikutusdatalle:")
-        print(chi2li, chi2licov)
-        print("chi^2/N vain charm datalle:")
-        print(chi2c, chi2ccov)
+        chi2_tot = lambda theta: chi2li(theta) + chi2c(theta)
+        chi2_tot_cov = lambda theta: chi2licov(theta) + chi2ccov(theta)
+
+        theta_map = [20.99578715, 0.28233806, 0.96061127, 1.71801509]  # baf.get_MAP(samples[0], chi2_tot)
+        # theta_map = np.quantile(samples[0], 0.5, axis=0)
+        theta_map_cov = [18.23953692, 0.292427, 1.1504932, 1.97964395]  # baf.get_MAP(samples[1], chi2_tot_cov)
+        # theta_map_cov = np.quantile(samples[1], 0.5, axis=0)
+        print("MAP: ", theta_map)
+        print("chi2/Ndof (MAP): ", chi2_tot(theta_map) / (Dc.shape[0] + Dli.shape[0] - 4))
+
+        print("MAP for cov: ", theta_map_cov)
+        print("chi2/Ndof wCov (MAP): ", chi2_tot_cov(theta_map_cov) / (Dc.shape[0] + Dli.shape[0] - 4))
+
+        print("MAP cov chi no cov: ", theta_map_cov)
+        print("chi2/Ndof (MAP): ", chi2_tot(theta_map_cov) / (Dc.shape[0] + Dli.shape[0] - 5))
+
+        print("MAP chi wcov: ", theta_map)
+        print("chi2/Ndof wCov (MAP): ", chi2_tot_cov(theta_map) / (Dc.shape[0] + Dli.shape[0] - 5))
 
 
 def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
@@ -673,7 +668,7 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
             zfname = zfname + ".pdf"
 
             print("Total emulator")
-            ztitle = "Gamma setup"
+            ztitle = r"GBW$^\gamma$"
             pred = emulator_draw(test_samples)
             pred_std = emulator_std(test_samples)
             baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname,
@@ -714,6 +709,43 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
     if samples is not None:
         fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
 
+    if more_plots:
+        Dli = sigma_r_expli
+        Dc = sigma_r_expc
+
+        sigma_r_errli = np.sqrt(tot_no_proc**2 + np.sum(procedural**2, axis=1))
+        sigma_r_errc = np.sqrt(uncorrc**2 + sys_erc**2)
+        cov_li = sef.make_cov(uncorrli, betali)
+        cov_c = sef.make_cov(uncorrc, betac)
+
+        emuli = lambda theta: emulatorli(theta)[0]
+        emuc = lambda theta: emulatorc(theta)[0]
+        chi2li = lambda theta: prob_calc.log_likelihood(Dli, emuli, theta, ystd=sigma_r_errli, model_error=False)  # / (Dli.shape[0] - 5)
+        chi2licov = lambda theta: prob_calc.log_likelihood(Dli, emuli, theta, cov_y=cov_li, model_error=False)  # / (Dli.shape[0] - 5)
+
+        chi2c = lambda theta: prob_calc.log_likelihood(Dc, emuc, theta, ystd=sigma_r_errc, model_error=False)  # / (Dc.shape[0] - 5)
+        chi2ccov = lambda theta: prob_calc.log_likelihood(Dc, emuc, theta, cov_y=cov_c, model_error=False)  # / (Dc.shape[0] - 5)
+
+        chi2_tot = lambda theta: chi2li(theta) + chi2c(theta)
+        chi2_tot_cov = lambda theta: chi2licov(theta) + chi2ccov(theta)
+
+        theta_map = [17.57815724, 0.27390233, 1.25629047, 1.07392097, 1.72693998]  # baf.get_MAP(samples[0], chi2_tot)
+        # theta_map = np.quantile(samples[0], 0.5, axis=0)
+        theta_map_cov = [15.14862014, 0.27829771, 1.54891792, 1.09007943, 1.99827364]  # baf.get_MAP(samples[1], chi2_tot_cov)
+        # theta_map_cov = np.quantile(samples[1], 0.5, axis=0)
+
+        print("MAP: ", theta_map)
+        print("chi2/Ndof (MAP): ", chi2_tot(theta_map) / (Dc.shape[0] + Dli.shape[0] - 5))
+
+        print("MAP for cov: ", theta_map_cov)
+        print("chi2/Ndof wCov (MAP): ", chi2_tot_cov(theta_map_cov) / (Dc.shape[0] + Dli.shape[0] - 5))
+
+        print("MAP cov chi no cov: ", theta_map_cov)
+        print("chi2/Ndof (MAP): ", chi2_tot(theta_map_cov) / (Dc.shape[0] + Dli.shape[0] - 5))
+
+        print("MAP chi wcov: ", theta_map)
+        print("chi2/Ndof wCov (MAP): ", chi2_tot_cov(theta_map) / (Dc.shape[0] + Dli.shape[0] - 5))
+
 
 if __name__ == '__main__':
     main_noC(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_noC.dat', 'data/MCMC/MCMC_noC_cov.dat'),
@@ -743,6 +775,7 @@ if __name__ == '__main__':
     #              zoom=[[15, 20], [0.26, 0.28], [1.05, 1.6], [1.03, 1.095], [1.68, 2.05]],  # plot_fname='kuvat/wC.png',
     #              zscore=1, only_z=0,  # z_save_fig=True,
     #              create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+    #              more_plots=True,
     #              plot_save=False, plot_fname='gamma_posterior.pdf')
 
     # For getting notification when done. Needs plyer module.

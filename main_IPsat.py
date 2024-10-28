@@ -231,7 +231,7 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
             zfname = zfname + ".pdf"
 
             print("Total emulator")
-            ztitle = "IPsat setup"
+            ztitle = "IPsat"
             pred = emulator_draw(test_samples)
             pred_std = emulator_std(test_samples)
             baf.z_score(pred, pred_std, model, zoom=z_zoom, save_fig=z_save_fig, fname=zfname,
@@ -275,61 +275,56 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
         Dli = sigma_r_expli
         Dc = sigma_r_expc
 
-        # theta = 1.338 2.093 0.084 2.173 nocov
-        T = np.loadtxt("IPsat/data/testing/sigma_r_maxlik.dat")
-        Tli = T[:-34]
-        Tc = T[-34:]
-
-        # theta cov 2 = 1.47 2.55 0.064 2.353
-        # Tcov = np.loadtxt("IPsat/data/testing/sigma_r_cov_theta2.dat")
-
-        # theta noemuerr cov = 1.366 2.302 0.076 2.203
-        # Tcov = np.loadtxt("IPsat/data/testing/sigma_r_maxlik_cov_noemuerr.dat")
-        # theta cov = 1.383 2.5 0.066 2.3
-        Tcov = np.loadtxt("IPsat/data/testing/sigma_r_maxlik_cov.dat")
-        Tcovli = Tcov[:-34]
-        Tcovc = Tcov[-34:]
-        # sef.more_plots(np.vstack((Dli,Dc)), T, Tcov, beta, uncorr, Q2, x)
-        sef.more_plots(Dli, Tli, Tcovli, betali, uncorrli, Q2li, xli)
-        sef.more_plots(Dc, Tc, Tcovc, betac, uncorrc, Q2c, xc)
-
-        modli = lambda t: Tli
-        modc = lambda t: Tc
-
+        sigma_r_errli = np.sqrt(tot_no_proc**2 + np.sum(procedural**2, axis=1))
+        sigma_r_errc = np.sqrt(uncorrc**2 + sys_erc**2)
         cov_li = sef.make_cov(uncorrli, betali)
         cov_c = sef.make_cov(uncorrc, betac)
 
-        chi2li = -prob_calc.log_likelihood(Dli, modli, 1, ystd=sigma_r_errli, model_error=False) / 430
-        chi2licov = -prob_calc.log_likelihood(Dli, modli, 1, cov_y=cov_li, model_error=False) / 430
+        sampless = samples
+        if isinstance(samples, list):
+            post_limits = baf.find_region(samples[0])
+            sampless[0] = sef.cut_samples(sampless[0], post_limits)
+            post_limits = baf.find_region(samples[1])
+            sampless[1] = sef.cut_samples(sampless[1], post_limits)
+        else:
+            post_limits = baf.find_region(samples)
+            sampless = sef.cut_samples(sampless, post_limits)
+        if create_emulator:
+            # if isinstance(samples, list): sampless = samples[1]
+            sef.samples_plot(sampless[1], 5000, post_limits, emulatorli, xli, Q2li, yli, sigma_r_expli, sigma_r_errli)
 
-        chi2c = -prob_calc.log_likelihood(Dc, modc, 1, ystd=sigma_r_errc, model_error=False) / 34
-        chi2ccov = -prob_calc.log_likelihood(Dc, modc, 1, cov_y=cov_c, model_error=False) / 34
+        emuli = lambda theta: emulatorli(theta)[0]
+        emuc = lambda theta: emulatorc(theta)[0]
+        chi2li = lambda theta: prob_calc.log_likelihood(Dli, emuli, theta, ystd=sigma_r_errli, model_error=False)  # / (Dli.shape[0] - 5)
+        chi2licov = lambda theta: prob_calc.log_likelihood(Dli, emuli, theta, cov_y=cov_li, model_error=False)  # / (Dli.shape[0] - 5)
 
-        # TODO: This is ugly.
-        hh = "no exp cov	 with exp cov"
-        print("")
-        print("chi^2/N kokonaisvaikutusdatalle:")
-        print(hh)
-        print(chi2li, chi2licov)
-        print("chi^2/N vain charm datalle:")
-        print(hh)
-        print(chi2c, chi2ccov)
+        chi2c = lambda theta: prob_calc.log_likelihood(Dc, emuc, theta, ystd=sigma_r_errc, model_error=False)  # / (Dc.shape[0] - 5)
+        chi2ccov = lambda theta: prob_calc.log_likelihood(Dc, emuc, theta, cov_y=cov_c, model_error=False)  # / (Dc.shape[0] - 5)
 
-        modli = lambda t: Tcovli
-        modc = lambda t: Tcovc
+        chi2_tot = lambda theta: chi2li(theta) + chi2c(theta)
+        chi2_tot_cov = lambda theta: chi2licov(theta) + chi2ccov(theta)
 
-        print("")
-        print("Kovarianssi huomioiden saatujen arvojen chit:")
-        chi2li = -prob_calc.log_likelihood(Dli, modli, 1, ystd=sigma_r_errli, model_error=False) / 430
-        chi2licov = -prob_calc.log_likelihood(Dli, modli, 1, cov_y=cov_li, model_error=False) / 430
+        theta_map = [1.33006287, 2.01625159, 0.08764014, 2.14053997]  # baf.get_MAP(samples[0], chi2_tot)
+        # theta_map = np.quantile(samples[0], 0.5, axis=0)
+        theta_map_cov = [1.37190592, 2.54735337, 0.06793598, 2.27400732]  # baf.get_MAP(samples[1], chi2_tot_cov)
+        # theta_map_cov = np.quantile(samples[1], 0.5, axis=0)
 
-        chi2c = -prob_calc.log_likelihood(Dc, modc, 1, ystd=sigma_r_errc, model_error=False) / 34
-        chi2ccov = -prob_calc.log_likelihood(Dc, modc, 1, cov_y=cov_c, model_error=False) / 34
+        print("MAP: ", theta_map)
+        print("chi2/Ndof (MAP): ", chi2_tot(theta_map) / (Dc.shape[0] + Dli.shape[0] - 4))
 
-        print("chi^2/N kokonaisvaikutusdatalle:")
-        print(chi2li, chi2licov)
-        print("chi^2/N vain charm datalle:")
-        print(chi2c, chi2ccov)
+        print("MAP for cov: ", theta_map_cov)
+        print("chi2/Ndof wCov (MAP): ", chi2_tot_cov(theta_map_cov) / (Dc.shape[0] + Dli.shape[0] - 4))
+
+        print("MAP cov: ", theta_map_cov)
+        print("chi2/Ndof (MAP_cov): ", chi2_tot(theta_map_cov) / (Dc.shape[0] + Dli.shape[0] - 4))
+
+        print("MAP: ", theta_map)
+        print("chi2_cov/Ndof wCov (MAP): ", chi2_tot_cov(theta_map) / (Dc.shape[0] + Dli.shape[0] - 4))
+
+        Tli = emulatorli(theta_map)[0]
+        Tcovli = emulatorli(theta_map_cov)[0]
+
+        sef.more_plots(sigma_r_expli, Tli, Tcovli, betali, uncorrli, Q2li, xli)
 
 
 if __name__ == '__main__':

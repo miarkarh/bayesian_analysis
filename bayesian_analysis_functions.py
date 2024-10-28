@@ -128,6 +128,23 @@ def find_region(samples):
     return np.array(par_limits)
 
 
+def get_MAP(samples, chi2_func):
+    """
+    Calculate the maximum a priori (or mode) of each parameter round 3 decimals.
+
+    Parameters
+    ----------
+    samples : ndarray
+        The samples of the posterior.
+
+    Returns
+    -------
+    Maximum a priori or MAP for each parameter.
+    """
+    return samples[np.argmin(np.abs([chi2_func(i) for i in samples]))]
+    # return np.quantile(samples, 0.5, axis=0)
+
+
 def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
             fname='z_score.png', pred_mean=None, title=''):
     """
@@ -181,7 +198,7 @@ def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
     # plt.show()
 
     # plotting
-    plt.figure(figsize=(4, 4))
+    plt.figure(figsize=(5, 5))
     if zoom: rang = [-10, 10]
     else: rang = None
     plt.hist(z, 500, range=rang, density=True)  # Plot mean as a vertical line
@@ -200,7 +217,7 @@ def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
     plt.ylim([0.0, 0.5])
     plt.legend()
     # Saving figure
-    if save_fig: plt.savefig(fname)
+    if save_fig: plt.savefig(fname)  # plt.savefig("z_score.pdf")
 
 
 def make_emulator(X, Y, par_limits, pcacomps, whiten=True, plot_expl_var=False, **kwargs):

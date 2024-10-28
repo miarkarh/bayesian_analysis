@@ -17,9 +17,10 @@ class PCA_GPE:
     Makes scaling and PCA transformations to a training data and trains a Gaussian process emulator
     for each first n principal component. Emulators' predictions and standard deviations or
     covariance matrices are inverse transformed and scaled back to the original data structure.
-    I took an example from Chun Shen's implementation https://github.com/chunshen1987/bayesian_analysis/
+    I took an example from Jonah Bernhard's code https://github.com/jbernhard/hic-param-est 
+    for emulator. I also took an example from Chun Shen's implementation https://github.com/chunshen1987/bayesian_analysis/
     and from John Scott Moreland's implementation https://github.com/morelandjs/hic-param-est-qm18/
-    for the emulator.
+    which both are derived from Jonah Bernhard's code.
 
     One migth have to tune emulator's kernel for different setups.
     """
@@ -39,7 +40,7 @@ class PCA_GPE:
         None.
 
         """
-        self.pca = PCA(whiten=whiten, copy=False)
+        self.pca = PCA(whiten=whiten, copy=False, svd_solver='full')
         self.scaler = StandardScaler(copy=False)
         self.whiten = whiten
         self.npc = npc
@@ -98,18 +99,21 @@ class PCA_GPE:
             gp.fit(X, z)
             self.gps.append(gp)
 
+        # The inverse transformation matrix Q^-1
+        # Same as W^{-1} @ V^T @ S, but this is faster for computing.
         self._trans_matrix = (
-            self.pca.components_  # V "right singular vectors"
-            * np.sqrt(self.pca.explained_variance_[:, np.newaxis])  # whitening?
-            * self.scaler.scale_  # Scaling by standard deviations
+            self.pca.components_  # V^T "right singular vectors"
+            * np.sqrt(self.pca.explained_variance_[:, np.newaxis])  # W^-1 whitening
+            * self.scaler.scale_  # S Scaling by standard deviations of columns
         )
+
         # Compute the partial transformation for the first n principal components that are actually
         # emulated.
         A = self._trans_matrix[:self.npc]
         self._var_trans = np.einsum('ki,kj->kij', A, A, optimize=False).reshape(self.npc, self.pca.n_features_in_**2)
 
         # Compute the covariance matrix for the remaining neglected PCs (truncation error).
-        # These components always have variance == 1.
+        # These components always have always variance 1.
         B = self._trans_matrix[self.npc:]
         self._cov_trunc = np.dot(B.T, B)
 
@@ -131,6 +135,8 @@ class PCA_GPE:
             The transformed array to original space.
 
         """
+        # Same as Z @ Q^-1[:Z.shape[-1]]   (self._trans_matrix is Q^-1)
+        # or Z @ W^{-1}[:Z.shape[-1]] @ V^T[:Z.shape[-1]] @ S
         Y = np.dot(Z, self._trans_matrix[:Z.shape[-1]])
         Y += self.scaler.mean_
         return Y
@@ -184,8 +190,10 @@ class PCA_GPE:
             gp_var += extra_std**2
 
             # Compute the covariance at each sample point using the pre-calculated arrays.
+            # Same as np.einsum('ki,lk,kj->lji', Q^-1[:npc], gp_var, Q^-1[:npc]), but faster.
+            # Also same as np.array([Q^-1[:10].T @ np.diag(varr) @ Q^-1[:10] for varr in gp_var]). Still faster.
             cov = np.dot(gp_var, self._var_trans).reshape(X.shape[0], self.pca.n_features_in_, self.pca.n_features_in_)
-            if self.whiten: cov += self._cov_trunc
+            cov += self._cov_trunc
 
             if return_cov:
                 if dimX == 1: cov = cov[0]

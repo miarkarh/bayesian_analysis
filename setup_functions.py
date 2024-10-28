@@ -209,8 +209,8 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
     D_shifted = D - np.sum(beta * nuis, axis=1)
 
     minchi2 = np.sum((D_shifted - T)**2 / uncorr**2) + np.sum(nuis**2)
-    print(r"$\chi_{min}^2$")
-    print(minchi2)
+    print(r"$\chi_{min}^2$/N")
+    print(minchi2 / np.size(D))
 
     x1, D1, beta1, T1, Tcov1, D_sf1 = cut_by_Q2_and_sort_by_x(
         Q2, x, 3.5, D, beta, T, Tcov, D_shifted)[1:]
@@ -387,6 +387,7 @@ def cut_by_Q2_and_sort_by_x(Q2, x, Q2_val, *other_vars_to_sort):
         vars_.append(var[Q2lim][sort])
     return Q2, x, *vars_
 
+
 def cut(data):
     """
     Cut data with x<0.01 and 1<Q2<50.
@@ -509,5 +510,5 @@ def parameter_names(n):
 
     """
     if n == 5:
-        return [r'$\sigma_0$ [mb]', r'$\lambda$', '${Q_{s0}}^2$ [GeV$^2$]', r'$\gamma$', '$m_c$ [GeV]']
-    return [r'$\sigma_0$ [mb]', r'$\lambda$', '${Q_{s0}}^2$ [GeV$^2$]', '$m_c$ [GeV]'][:n]
+        return [r'$\sigma_0$ [mb]', r'$\lambda$', '${Q^2}_{s0}$ [GeV$^2$]', r'$\gamma$', '$m_c$ [GeV]']
+    return [r'$\sigma_0$ [mb]', r'$\lambda$', '${Q^2}_{s0}$ [GeV$^2$]', '$m_c$ [GeV]'][:n]
