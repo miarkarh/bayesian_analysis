@@ -487,6 +487,9 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
         print("MAP chi wcov: ", theta_map)
         print("chi2/Ndof wCov (MAP): ", chi2_tot_cov(theta_map) / (Dc.shape[0] + Dli.shape[0] - 5))
 
+        sef.more_plots(sigma_r_expli, emuli(theta_map), emuli(theta_map_cov), betali, uncorrli, Q2li, xli)
+        sef.more_plots(sigma_r_expc, emuc(theta_map), emuc(theta_map_cov), betac, uncorrc, Q2c, xc)
+
 
 def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
                  save_emulator=False, load_emulator=False,

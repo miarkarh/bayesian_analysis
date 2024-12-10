@@ -150,7 +150,7 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
         diffpersyst = (D - D_shifted) / syserr
         plt.figure()
         plt.hist(diffpersyst, 100)
-        plt.title("Histogram of (D-D_shifted)/sys_er")
+        plt.title(r"Histogram of ($D-D_s)/\sigma_{sys}$")
         plt.savefig('hist.pdf')
         plt.show
 
@@ -340,7 +340,7 @@ def samples_plot(samples, N, par_limits, emulator, x, Q2, y, sigma_r_exp, sigma_
     # print(np.max(100 * (avg_sigma_r - mens) / avg_sigma_r))
     # print(np.max(100 * (std_sigma_r - stdssdf) / std_sigma_r))
 
-    plt.figure(figsize=(9, 7))
+    plt.figure(figsize=(7, 5))
     #plt.title(str(N) + r' random samples from the cov posterior against HERA data with $\sqrt{s} = 318$ GeV$^2$.')
 
     def plot(x, sigma_r_exp, sigma_r_err, avg_sigma_r, std_sigma_r, Q2_val, temp=1):
@@ -348,7 +348,7 @@ def samples_plot(samples, N, par_limits, emulator, x, Q2, y, sigma_r_exp, sigma_
                                    markersize=2, capsize=2, label="HERA data")
         else: plt.errorbar(x, sigma_r_exp, sigma_r_err, color='k', alpha=0.5, fmt='o',
                            markersize=2, capsize=2)
-        plt.plot(x, avg_sigma_r, label="$Q^2$ = " + str(Q2_val) + " GeV$^2$")
+        plt.plot(x, avg_sigma_r, label=str(Q2_val) + " GeV$^2$")
         # label=r"$\sigma_r$ from posterior")
         plt.fill_between(x, avg_sigma_r + 2 * std_sigma_r,
                          avg_sigma_r - 2 * std_sigma_r, alpha=0.4)

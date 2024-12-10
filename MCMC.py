@@ -21,14 +21,14 @@ def mcmc_sampling(par_limits, log_probability, nwalkers=200, nwalks=2000, burn=5
         Log-probability function f(sample), which to sample.
     nwalkers : int, optional
         How many walkers used in sampling process. The default is 200.
-    nwalks : TYPE, optional
+    nwalks : int, optional
         How many steps walkers take after burn stage. The default is 2000.
     burn : int, optional
         How many steps taken in burn stage of sampling for walkers to find the distribution. The default is 500.
     thin : int, optional
         Take only every thin steps from the chain. The default is 1.
     flat : bool, optional
-        Defines if walkers chains are combined into one chain. The default is True.
+        Defines if walkers chains are combined into one chain. The default is False.
     moves : emcee move, optional
         What emcee move algorithm to use. The default is None, which means stretch move in emcee.
     plot_progress : bool, optional
@@ -52,6 +52,7 @@ def mcmc_sampling(par_limits, log_probability, nwalkers=200, nwalks=2000, burn=5
 
     mcmc = emcee.EnsembleSampler(nwalkers, ndim, log_probability, moves=moves)
     # Burn stage
+    if burn == 0: burn = 1
     state = mcmc.run_mcmc(p0, burn)
     mcmc.reset()
     # The sampling run
@@ -87,12 +88,16 @@ def plot_sampling_progress(samples, ndim, labels=None):
     None.
 
     """
-    fig, axes = plt.subplots(ndim, figsize=(10, 7), sharex=True)
+    fig, axes = plt.subplots(ndim, figsize=(10, 2), sharex=True)
+
+    # Ensure axes is always iterable
+    if ndim == 1:
+        axes = [axes]
 
     if labels is None:
         labels = []
         for i in range(ndim):
-            labels.append("par" + str(i + 1))
+            labels.append("")  # labels.append("par" + str(i + 1))
     for i in range(ndim):
         ax = axes[i]
         ax.plot(samples[:, :, i], "k", alpha=0.3)
@@ -101,4 +106,4 @@ def plot_sampling_progress(samples, ndim, labels=None):
         ax.yaxis.set_label_coords(-0.1, 0.5)
 
     axes[-1].set_xlabel("step number")
-    fig.savefig("mcmc_walkers.png")
+    fig.savefig("mcmc_walkers.pdf")
