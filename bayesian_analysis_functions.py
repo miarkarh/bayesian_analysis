@@ -47,7 +47,7 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
     zoom_width : int or float, optional
         If zoom="auto", this determines how wide the zoom will be.
         Might sometimes need adjusting manually.
-        Change for wider distribution region. The default is 3.
+        Recommended to use if the posterior is cut too early. The default is 3.
 
     Raises
     ------
@@ -103,7 +103,7 @@ def find_region(samples, width=3):
         The chain of parameters from MCMC. Can be a list of several chains from several posteriors.
     width : int or float, optional
         Determines how wide the zoom will be. Might sometimes need adjusting manually.
-        Change for wider distribution region. The default is 3.
+        Recommended to use if the posterior is cut too early. The default is 3.
 
     Returns
     -------
