@@ -30,9 +30,10 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
         Limits of the parameters in the posterior. The default is None.
     labels : array, optional
         Names of each parameter. The default is None.
-    zoom : string, optional
+    zoom : string or array, optional
         Defines if distribution is zoomed to relevant region. The default is None, meaning whole
-        parameter space is shown. Other option is 'auto'.
+        parameter space is shown. Other options are 'auto' for zooming into clear posterior,
+        or array of limits for parameters for custom zoom.
     suptitle : string, optional
         Title for plot. The default is None.
     save : bool, optional
