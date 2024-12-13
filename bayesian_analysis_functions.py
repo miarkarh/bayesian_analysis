@@ -15,7 +15,7 @@ import pickle
 
 
 def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
-             save=False, fname=None, fig=None, ax=None):
+             save=False, fname=None, fig=None, ax=None, zoom_width=3):
     """
     Plot marginal distributions and correlations of parameters by histograms from samples.
 
@@ -44,6 +44,10 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
         If one wants to plot to some pre-existing figure. The default is None.
     ax : axes, optional
         Give also axes of the optional pre-existing figure. The default is None
+    zoom_width : int or float, optional
+        If zoom="auto", this determines how wide the zoom will be.
+        Might sometimes need adjusting manually.
+        Change for wider distribution region. The default is 3.
 
     Raises
     ------
@@ -60,7 +64,7 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
 
     # Automatically find relevant region.
     if zoom == 'auto':
-        par_limits = find_region(samples)
+        par_limits = find_region(samples, zoom_width)
     else: par_limits = zoom
 
     if not isinstance(samples, np.ndarray):
@@ -89,7 +93,7 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
     return figure, np.array(par_limits)
 
 
-def find_region(samples):
+def find_region(samples, width=3):
     """
     Find automatically the relevant region for the posterior distribution.
 
@@ -97,6 +101,9 @@ def find_region(samples):
     ----------
     samples : array or list of arrays
         The chain of parameters from MCMC. Can be a list of several chains from several posteriors.
+    width : int or float, optional
+        Determines how wide the zoom will be. Might sometimes need adjusting manually.
+        Change for wider distribution region. The default is 3.
 
     Returns
     -------
@@ -122,10 +129,8 @@ def find_region(samples):
         mean.append(m[1])
         std.append((m[2] - m[0]) / 2)
     par_limits = []
-    # Change for wider distribution region.
-    wide = 3
     for i in range(nparameters):
-        par_limits += [[mean[i] - wide * std[i], mean[i] + wide * std[i]]]
+        par_limits += [[mean[i] - width * std[i], mean[i] + width * std[i]]]
     return np.array(par_limits)
 
 
