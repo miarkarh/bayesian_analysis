@@ -266,7 +266,7 @@ def mainIPsat(saveMCMC=False, loadMCMC=False, fname=None,
         # moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
         moves = None
         samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers,
-                                     nwalks, burn, walkers_par_labels=labels, moves=moves, flat=flat)
+                                     nwalks, burn, moves=moves, flat=flat)
     # Plots posterior and takes plotted axis limits.
     if samples is not None:
         fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)

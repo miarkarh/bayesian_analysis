@@ -1,5 +1,7 @@
 """
 Here are some methods to help with coding many setups.
+There is also a make_posterior function for relatively easy creation of
+Bayesian inference and the posterior.
 
 @author: Mikko Artturi Karhunen.
 """
@@ -18,8 +20,6 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
              save=False, fname=None, fig=None, ax=None, zoom_width=3):
     """
     Plot marginal distributions and correlations of parameters by histograms from samples.
-
-    Code is a little messy.
 
     Parameters
     ----------
@@ -76,6 +76,10 @@ def plotting(samples, par_limits=None, labels=None, zoom=None, suptitle=None,
             figure = corner.corner(samples[i], bins=100, smooth=1.5, smooth1d=1,
                                    plot_datapoints=False, range=par_limits, fig=figure, color=next(colors))
     else:
+        # To get right titles, altough the quintiles can still be misleading
+        # for some reason.
+        # if par_limits is not None:
+        #     samples = cut_samples(samples, par_limits)
         figure = corner.corner(samples, bins=100, labels=labels, smooth=1.5, smooth1d=1,
                                show_titles=True, plot_datapoints=False,
                                range=par_limits)
@@ -101,6 +105,7 @@ def find_region(samples, width=3):
     ----------
     samples : array or list of arrays
         The chain of parameters from MCMC. Can be a list of several chains from several posteriors.
+        The chain(s) must be flattened.
     width : int or float, optional
         Determines how wide the zoom will be. Might sometimes need adjusting manually.
         Recommended to use if the posterior is cut too early. The default is 3.
@@ -132,6 +137,30 @@ def find_region(samples, width=3):
     for i in range(nparameters):
         par_limits += [[mean[i] - width * std[i], mean[i] + width * std[i]]]
     return np.array(par_limits)
+
+
+def cut_samples(samples, par_limits):
+    """
+    Cut the samples given some parameter limitations.
+
+    Parameters
+    ----------
+    samples : ndarray
+        The parameter samples to be cut.
+    par_limits : list or ndarray
+        The limitations for parameters.
+
+    Returns
+    -------
+    ndarray
+        Cut down samples.
+
+    """
+    cut = []
+    for i in range(par_limits.shape[0]):
+        cut.append((par_limits[i, 0] < samples[:, i]) & (samples[:, i] < par_limits[i, 1]))
+    cut = np.prod(np.array(cut), axis=0).astype(bool)
+    return samples[cut, :]
 
 
 def get_MAP(samples, chi2_func):
@@ -226,6 +255,29 @@ def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
     if save_fig: plt.savefig(fname)  # plt.savefig("z_score.pdf")
 
 
+def make_cov(uncorr, beta):
+    """
+    Generate covariance matrix.
+
+    Parameters
+    ----------
+    uncorr : nparray
+        Uncorrelated uncertainties.
+    beta : nparray
+        Correlated uncertainties.
+
+    Returns
+    -------
+    cov : nparray
+        The covariance matrix
+
+    """
+    N = uncorr.size
+    delta = np.eye(N)
+    cov = uncorr**2 * delta + np.einsum('ik, jk', beta, beta)
+    return cov
+
+
 def make_emulator(X, Y, par_limits, pcacomps, whiten=True, plot_expl_var=False, **kwargs):
     """
     Make an emulator.
@@ -294,94 +346,271 @@ def start_sampling(par_limits, par_names, log_prob_emulator, saveMCMC=False, fna
     """
     print("Starting MCMC sampling")
     samples = None
-    samples = MCMC.mcmc_sampling(par_limits, log_prob_emulator, *args, **kwargs)
+    samples = MCMC.mcmc_sampling(par_limits, log_prob_emulator,
+                                 walkers_par_labels=par_names, *args, **kwargs)
     if saveMCMC:
         np.savetxt(fname, samples, header=' '.join(par_names), comments='# ',
                    delimiter=' ')
     return samples
 
 
-def make_posterior(training_parameters, training_data,
-                   par_limits, labels,
-                   experimental_data, experimental_cov,
-                   pcacomps, MCMC_walkers, MCMC_burn, MCMC_steps,
-                   calc_zscore, testing_parameters, testing_data,
-                   plot_save=False, emulator_std=False, emulator_cov=True,
-                   save_samples=False, load_samples=False, samples_file="samples/samples.dat",
-                   create_emulator=True, save_emulator=False, load_emulator=False, emu_file="emulators/emulator",
-                   kwargs_for_pca={}, kwargs_for_MCMC={}):
-    """ 
-    Work in progress. General function to making a posterior and using this 
-    setup easier.
+def make_posterior(training_parameters,
+                   training_data,
+                   testing_parameters,
+                   testing_data,
+                   experimental_data,
+                   experimental_cov,
+                   parameters_limits,
+                   parameters_labels,
+                   MCMC_walkers=20,
+                   MCMC_burn=50,
+                   MCMC_steps=100,
+                   n_principal_components=3,
+                   calc_zscore=True,
+                   save_figs=False,
+                   posterior_fname=None,
+                   emulator_std=False,
+                   emulator_cov=True,
+                   save_samples=False,
+                   load_samples=False,
+                   MCMC_samples_file="data/MCMC/samples.dat",
+                   create_emulator=True,
+                   save_emulator=False,
+                   load_emulator=False,
+                   emulator_file="emulators/emulator",
+                   kwargs_PCA_GPE={},
+                   kwargs_MCMC={},
+                   kwargs_plotting={}):
     """
-    # Should calculate the posterior.
+    General function for easier use of this Bayesian inference and the
+    posterior creation. Should make automatically the posterior. Can be given
+    multiple datasets.
 
-    # kwargs_pca = {key: value for key, value in kwargs.items() if key.startswith('pca_')}
+    Only needs training samples with corresponding training data for
+    emulator(s), independent testing parameters and data, experimental data to
+    fit to, and parameter limits and their names.
 
+    One should tune MCMC settings for better posterior. Also possible to make
+    tunings to PCA_GPE via passing kwargs to make_emulator function,
+    to MCMC with kwargs_MCMC, and to plotting function with kwargs_plotting.
+    For plotting I recommend to use "zoom": 'auto' kwarg for automatic zoom to
+    posterior.
+
+    Can save or load emulators to/from a file.
+
+    TODO: Bug testing.
+    Might still have some bugs, maybe at kwargs functionality.
+
+    Parameters
+    ----------
+    training_parameters : ndarray or string
+        Can be given the training parameter set as a ndarray or as string to
+        the file containing the ndarray. Loads from the file with
+        np.loadtxt(). Should correspond to training dataset(s).
+    training_data : ndarray, list of ndarrays, string, list of strings
+        The dataset(s) or path(s) to training samples/files. Has to correspond
+        to training parameters. If given multiple, makes multiple emulators.
+    testing_parameters : ndarray or string
+        The dataset or path to testing parameter samples/file. Loads from the
+        file with np.loadtxt(). Not needed if calc_zscore is False.
+    testing_data : ndarray, list of ndarrays, string, list of strings
+        The dataset(s) or path(s) to training samples/files. Has to correspond
+        to testing_parameters. If given multiple, assumes and tests multiple
+        emulators. Not needed if calc_zscore is False.
+    experimental_data : ndarray, list of ndarrays, string, list of strings
+        The experimental dataset(s) to fit the emulator to. Can have multiple,
+        but must have same amount of datasets as there are experimental_covs
+        and emulators.
+    experimental_cov : ndarray, list of ndarrays
+        The covariance matrix(es) for corresponding experimental dataset(s).
+        Must have as many as there are experimental_data and emulators.
+    parameters_limits : array
+        The array of limits for parameters.
+    parameters_labels : array
+        The array made of names for parameters.
+    MCMC_walkers : int, optional
+        How many walkers are used in MCMC. Can be hunderds. The default is 20.
+    MCMC_burn : int, optional
+        How many first steps of walkers are discounted. The calibration stage.
+        The default is 50.
+    MCMC_steps : int, optional
+        How many steps the walkers take after the burn stage.
+        The default is 100.
+    n_principal_components : int, optional
+        How many principal components will be considered at GPE. Higher makes
+        more accurate posterior, but slows down the process. 2 to 10 should be
+        enough. Higher numbers also give warnings from scikit learn.
+        The default is 3.
+    calc_zscore : bool, optional
+        If the z-score is calculated. The default is True.
+    save_figs : bool, optional
+        TODO: Make to work. Now saves many figures as default.
+        If the figures are stored as pdf. Work in progress.
+        The default is False.
+    posterior_fname : string, optional
+        The file (with path) to which the posterior figure is saved.
+        The default is None.
+    emulator_std : bool, optional
+        If the emulator(s) returns standard deviation as unccertainty estimate.
+        The default is False.
+    emulator_cov : bool, optional
+        If the emulator(s) return covariance matrix as uncertainty estimate.
+        The default is True.
+    save_samples : bool or string, optional
+        If the MCMC samples are saved to a file. Can be also given as a file
+        where the samples will be stored then. The default is False.
+    load_samples : bool, optional
+        If the MCMC samples are loaded from a file. If given a string(s)
+        path(s) to file(s), loads samples dataset(s). The default is False.
+    MCMC_samples_file : TYPE, optional
+        DESCRIPTION. The default is "data/MCMC/samples.dat".
+    create_emulator : bool, optional
+        If the emulator(s) is(are) to be created. The default is True.
+    save_emulator : bool or string or list, optional
+        Determines if the emulator(s) is/are saved to a file(s).
+        If given a string address to a file or multiple files,
+        saves one or multiple emulators to those files. The default is False.
+    load_emulator : bool or string or list, optional
+        Determines if the emulator(s) is/are loaded from a file(s).
+        If given a string path(s) to a file or multiple files,
+        loads one or multiple emulators. The default is False.
+    emulator_file : string or list, optional
+        Name(s) or file(s) (with path(s)) for the emulator(s) to load from or save to.
+        The default is "emulators/emulator".
+    kwargs_PCA_GPE : dict, optional
+        The kwargs to pass on to pca method. The default is {}.
+    kwargs_MCMC : dict, optional
+        The kwargs to pass on to mcmc function. The default is {}.
+    kwargs_plotting : dict, optional
+        The kwargs to pass on to plotting stage, like {"zoom": "auto"}.
+        The default is {}.
+
+    Returns
+    -------
+    samples : ndarray
+        The MCMC samples, from which the posterior figure is made.
+
+    """
+
+    # Reads data from txt file(s). One part can have multiple datasets.
+    # Like no covariance and with covariance matrix datasets.
     def check_data(var):
         for i in range(len(var)):
             if isinstance(var[i], list) or np.ndim(var[i]) > 2:
                 check_data(var[i])
             elif isinstance(var[i], str):
                 var[i] = np.loadtxt(var[i])
+        return var
 
+    # Reads data from txt file(s). One part can have multiple datasets.
+    # Like no covariance and with covariance matrix datasets.
     (training_parameters, training_data,
-     testing_parameters, testing_data) = check_data(
-        [training_parameters, training_data, testing_parameters, testing_data])
+     testing_parameters, testing_data,
+     experimental_data, experimental_cov) = check_data([training_parameters,
+                                                        training_data,
+                                                        testing_parameters,
+                                                        testing_data,
+                                                        experimental_data,
+                                                        experimental_cov])
 
+    def to_list_form(var):
+        if not isinstance(var, list):
+            return [var]
+        return var
+
+    training_data = to_list_form(training_data)
+    testing_data = to_list_form(testing_data)
+    experimental_data = to_list_form(experimental_data)
+    experimental_cov = to_list_form(experimental_cov)
+
+    pca_gpe = []
     if load_emulator:
-        if isinstance(emu_file, list) or isinstance(emu_file, np.ndarray):
-            file = [open(emu, "rb") for emu in emu_file]
+        # If given multiple emulators
+        if isinstance(load_emulator, str) or isinstance(load_emulator, list):
+            emulator_file = load_emulator
+        if isinstance(emulator_file, list) or isinstance(emulator_file, np.ndarray):
+            file = [open(emu, "rb") for emu in emulator_file]
             pca_gpe = [pickle.load(file) for file in file]
         else:
-            file = open(emu_file, "rb")
-            pca_gpe = pickle.load(file)
+            file = open(emulator_file, "rb")
+            pca_gpe = [pickle.load(file)]
     elif create_emulator:
-        pca_gpe = []
-        emu_file = [emu_file]
-        for t_par, t_data, emu_file in zip(training_parameters, training_data, emu_file):
-            emu = make_emulator(t_par, t_data, par_limits, pcacomps, **kwargs_for_pca)
+        if isinstance(save_emulator, str) or isinstance(save_emulator, list):
+            emulator_file = save_emulator
+        # TODO: If one wants to use different amounts of npcs.
+        emulator_file = to_list_form(emulator_file)
+
+        # If emulator file count is less than amount of training datasets.
+        # To work with zip.
+        i = 1
+        while True:
+            i += 1
+            if len(emulator_file) != len(training_data):
+                emulator_file.append(emulator_file[0] + "_" + str(i))
+            else:
+                break
+
+        for tr_data, emu_file in zip(training_data, emulator_file):
+            emu = make_emulator(training_parameters, tr_data, parameters_limits,
+                                n_principal_components, **kwargs_PCA_GPE)
             pca_gpe.append(emu)
 
             if save_emulator:
                 file = open(emu_file, "wb")
                 pickle.dump(emu, file)
+
         print("Emulator done.")
+    else:
+        print("No emulator")
 
     model_error = (emulator_std or emulator_cov)
-    emulator = []
-    chi2s = []
-    for pca_gpe, experimental_data, experimental_cov in zip(
-            pca_gpe, experimental_data, experimental_cov):
-        experimental_std = np.sqrt(np.diag(experimental_cov))
-        emulator.append(lambda theta: pca_gpe.predict(theta, emulator_std,
-                                                      emulator_cov))
-        chi2s.append(lambda theta: prob_calc.log_posterior(experimental_data,
-                                                           emulator, theta,
-                                                           experimental_cov,
-                                                           experimental_std,
-                                                           par_limits,
-                                                           model_error))
-        # If one want's to skip z-score.
-        if calc_zscore:
-            emu_samps, emu_std = pca_gpe.predict(testing_parameters, return_std=1)
-            z_score(emu_samps, emu_std, true_model=testing_data)
+    if pca_gpe:
+        if len(pca_gpe) < len(experimental_data):
+            raise Exception("Less emulators than experimental datasets to predict")
 
-    chi2 = lambda theta: np.sum([ch[theta] for ch in chi2s])
+        def chi2(theta):
+            chi2s = []
+            for pcagpe, expe_data, expe_cov in zip(
+                    pca_gpe, experimental_data, experimental_cov):
+                em = lambda theta: pcagpe.predict(theta, emulator_std, emulator_cov)
+                chi2s.append(prob_calc.log_posterior(expe_data,
+                                                     em,
+                                                     theta,
+                                                     parameters_limits,
+                                                     expe_cov,
+                                                     model_error=model_error))
+            return np.sum(chi2s)
 
+        if calc_zscore:  # If one want's to skip z-score.
+            i = 0
+            for test_data, pcagpe in zip(testing_data, pca_gpe):
+                i += 1
+                pred_samps = pcagpe.sample_y(testing_parameters, n_samples=100)
+                pred_mean, pred_std = pcagpe.predict(testing_parameters,
+                                                     return_std=True,
+                                                     return_cov=False)
+                z_score(pred_samps, pred_std, test_data, pred_mean=pred_mean)
     samples = None
     if load_samples:
-        if np.size(load_samples) > 1:
-            samples = []
-            for fname in load_samples:
-                samples += [np.loadtxt(fname)]
-        else: samples = np.loadtxt(load_samples)
+        if not isinstance(load_samples, bool):
+            if np.size(load_samples) > 1:
+                samples = []
+                for fname in load_samples:
+                    samples += [np.loadtxt(fname)]
+            else: samples = np.loadtxt(load_samples)
+        else: samples = np.loadtxt('MCMC_samples.dat')
     elif not load_samples and not create_emulator:
-        print("No emulator. No sampling.")
-    else:
-        samples = start_sampling(par_limits, chi2, saveMCMC=save_samples,
+        print("No emulator. No sampling. No samples to load.")
+    elif pca_gpe:
+        samples = start_sampling(parameters_limits, parameters_labels, chi2,
+                                 saveMCMC=save_samples,
                                  fname=save_samples, nwalkers=MCMC_walkers,
                                  nwalks=MCMC_steps, burn=MCMC_burn,
-                                 walkers_par_labels=labels, **kwargs_for_MCMC)
+                                 **kwargs_MCMC)
     if samples is not None:
-        plotting(samples, par_limits, labels, save=plot_save, fname=plot_save)
+        # If not flattened samples, flatten them for plotting.
+        if samples.ndim > 2:
+            sams = samples.reshape(-1, samples.shape[2])
+        plotting(sams, parameters_limits, parameters_labels, save=save_figs,
+                 fname=posterior_fname, **kwargs_plotting)
+    return samples

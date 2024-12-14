@@ -84,7 +84,7 @@ def log_likelihood(y, y_model, theta, cov_y=None, ystd=None, model_error=True):
     return -chi2
 
 
-def log_posterior(y, y_model, theta, cov_y=None, ystd=None, par_limits=None, model_error=True):
+def log_posterior(y, y_model, theta, par_limits=None, cov_y=None, ystd=None, model_error=True):
     """
     Combine flat prior and log-likelihood and calculates likelihood posterior.
 
@@ -98,13 +98,13 @@ def log_posterior(y, y_model, theta, cov_y=None, ystd=None, par_limits=None, mod
         The model which calculates predictions at each datapoint.
     theta : array
         The parameter vector passed to the model.
+    par_limits : array, optional
+        The min max limits for each parameter in the parameter vector. The default is None.
     cov_y : array, optional
         The experimental covariance matrix. The default is None, but then ystd must be given.
     ystd : array, optional
         The standard deviations of the experimental values at each datapoint. The default is None,
         but then cov_y must be given.
-    par_limits : array, optional
-        The min max limits for each parameter in the parameter vector. The default is None.
     model_error : bool, optional
         Defines if the model returns error or covariance matrix. The default is True.
 

@@ -88,7 +88,7 @@ def plot_sampling_progress(samples, ndim, labels=None):
     None.
 
     """
-    fig, axes = plt.subplots(ndim, figsize=(10, 2), sharex=True)
+    fig, axes = plt.subplots(ndim, sharex=True)
 
     # Ensure axes is always iterable
     if ndim == 1:

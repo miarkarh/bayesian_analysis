@@ -170,7 +170,7 @@ def main_noC(saveMCMC=False, loadMCMC=False, fname=None,
     elif not loadMCMC and not create_emulator:
         print("No emulator. No sampling.")
     else:
-        samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers, nwalks, burn, walkers_par_labels=labels, flat=flat)
+        samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers, nwalks, burn, flat=flat)
     # Plots posterior and takes plotted axis limits.
     if samples is not None:
         fig, post_limits = baf.plotting(samples, par_limits, labels, zoom, save=plot_save, fname=plot_fname)
@@ -445,7 +445,7 @@ def main_C(saveMCMC=False, loadMCMC=False, fname=None,
         # moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
         moves = None
         samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers,
-                                     nwalks, burn, walkers_par_labels=labels, moves=moves, flat=flat)
+                                     nwalks, burn, moves=moves, flat=flat)
 
     # Plots posterior and takes plotted axis limits.
     if samples is not None:
@@ -706,7 +706,7 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
         # moves = [(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)]
         moves = None
         samples = baf.start_sampling(par_limits, labels, log_prob_emulator, saveMCMC, fname, nwalkers,
-                                     nwalks, burn, walkers_par_labels=labels, moves=moves, flat=flat)
+                                     nwalks, burn, moves=moves, flat=flat)
 
     # Plots posterior.
     if samples is not None:
@@ -751,15 +751,15 @@ def main_C_gamma(saveMCMC=False, loadMCMC=False, fname=None,
 
 
 if __name__ == '__main__':
-    main_noC(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_noC.dat', 'data/MCMC/MCMC_noC_cov.dat'),
-             save_emulator=0, load_emulator=1,
-             pcacomps=10, n_restarts=10,  # extra_std=[0.00035],
-             nwalkers=200, nwalks=1000, burn=500, flat=True,
-             zoom='auto', z_save_fig=False,
-             zscore=1, only_z=0,
-             create_emulator=1, emu_std=0, emu_cov=1, cov=1,
-             more_plots=True,
-             plot_save=False, plot_fname='light_posterior.pdf')
+    # main_noC(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_noC.dat', 'data/MCMC/MCMC_noC_cov.dat'),
+    #          save_emulator=0, load_emulator=1,
+    #          pcacomps=10, n_restarts=10,  # extra_std=[0.00035],
+    #          nwalkers=200, nwalks=1000, burn=500, flat=True,
+    #          zoom='auto', z_save_fig=False,
+    #          zscore=1, only_z=0,
+    #          create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+    #          more_plots=True,
+    #          plot_save=False, plot_fname='light_posterior.pdf')
 
     # main_C(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_wC.dat', 'data/MCMC/MCMC_wC_cov.dat'),
     #        save_emulator=0, load_emulator=1,
@@ -771,15 +771,15 @@ if __name__ == '__main__':
     #        more_plots=True,
     #        plot_save=False, plot_fname='charm_posterior.pdf')
 
-    # main_C_gamma(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_wCgamma.dat', 'data/MCMC/MCMC_wCgamma_cov.dat'),
-    #              save_emulator=0, load_emulator=1,
-    #              pcacomps=10, n_restarts=10,  # extra_std=[[0.0055], [0.0075]],
-    #              nwalkers=200, nwalks=1000, burn=500, flat=True,
-    #              zoom=[[15, 20], [0.26, 0.28], [1.05, 1.6], [1.03, 1.095], [1.68, 2.05]],  # plot_fname='kuvat/wC.png',
-    #              zscore=1, only_z=0,  # z_save_fig=True,
-    #              create_emulator=1, emu_std=0, emu_cov=1, cov=1,
-    #              more_plots=True,
-    #              plot_save=False, plot_fname='gamma_posterior.pdf')
+    main_C_gamma(saveMCMC=0, loadMCMC=1, fname=('data/MCMC/MCMC_wCgamma.dat', 'data/MCMC/MCMC_wCgamma_cov.dat'),
+                 save_emulator=0, load_emulator=1,
+                 pcacomps=10, n_restarts=10,  # extra_std=[[0.0055], [0.0075]],
+                 nwalkers=200, nwalks=1000, burn=500, flat=True,
+                 zoom=[[15, 20], [0.26, 0.28], [1.05, 1.6], [1.03, 1.095], [1.68, 2.05]],  # plot_fname='kuvat/wC.png',
+                 zscore=0, only_z=0,  # z_save_fig=True,
+                 create_emulator=1, emu_std=0, emu_cov=1, cov=1,
+                 more_plots=False,
+                 plot_save=False, plot_fname='gamma_posterior.pdf')
 
     # For getting notification when done. Needs plyer module.
     while True:

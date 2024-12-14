@@ -452,14 +452,14 @@ def make_cov(uncorr, beta):
 
     Parameters
     ----------
-    uncorr : array
-        Uncorrelated uncertainty.
-    beta : array
-        Systematic errors.
+    uncorr : nparray
+        Uncorrelated uncertainties.
+    beta : nparray
+        Correlated uncertainties.
 
     Returns
     -------
-    cov : array
+    cov : nparray
         The covariance matrix
 
     """
