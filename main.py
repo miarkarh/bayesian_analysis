@@ -8,7 +8,7 @@ TODO: spikes from setups to same plot
 """
 import pickle
 import numpy as np
-from plyer import notification  # For getting notification, when the run is finished.
+# from plyer import notification  # For getting notification, when the run is finished.
 import time
 import probability_formulas as prob_calc
 import bayesian_analysis_functions as baf
@@ -782,11 +782,11 @@ if __name__ == '__main__':
                  plot_save=False, plot_fname='gamma_posterior.pdf')
 
     # For getting notification when done. Needs plyer module.
-    while True:
-        time.sleep(3)
-        notification.notify(
-            title="Finished executing",
-            message="Successful",
-        )
-        time.sleep(1)
-        break
+    # while True:
+    #     time.sleep(3)
+    #     notification.notify(
+    #         title="Finished executing",
+    #         message="Successful",
+    #     )
+    #     time.sleep(1)
+    #     break
