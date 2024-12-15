@@ -181,7 +181,7 @@ def get_MAP(samples, chi2_func):
 
 
 def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
-            fname='z_score.png', pred_mean=None, title=''):
+            fname='z_score.pdf', pred_mean=None, title=''):
     """
     Generate a z-score histogram.
 
@@ -200,7 +200,7 @@ def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
     save_fig : bool, optional
         If z-score is to be saved. The default is False.
     fname : string, optional
-        Name of the saved plot file, if save_fig is True. The default is 'z_score.png'.
+        Name of the saved plot file, if save_fig is True. The default is 'z_score.pdf'.
     pred_mean : array
         The used predicted values from emulator. For example returned means from emulator.
 
@@ -245,14 +245,15 @@ def z_score(pred_samps, pred_std, true_model, zoom=False, save_fig=False,
     plt.title(title + ('Mean: {:.3f}, Std: {:.3f} \n').format(mean, std) + r"$\Delta_{avg}$" + (': {:.3f}%').format(emu_error_perc), fontsize=10)  # r'$\langle$(emu$_{mean}$ - model) / emu$\rangle$'
 
     xl = np.linspace(-4, 4, 100)
-    plt.plot(xl, 1 / np.sqrt(2 * np.pi) * np.exp(-1 / 2 * xl**2), label='N(0,1)')
+    plt.plot(xl, 1 / np.sqrt(2 * np.pi) * np.exp(-1 / 2 * xl**2), label=r'$\mathcal{N}(0,1)$')
     plt.xlabel('z-score', fontsize=11)
     plt.xticks(np.arange(-8, 10, 2))
     plt.xlim([-8, 8])
     plt.ylim([0.0, 0.5])
     plt.legend()
     # Saving figure
-    if save_fig: plt.savefig(fname)  # plt.savefig("z_score.pdf")
+    if save_fig: plt.savefig(fname)
+    # plt.savefig("z_score.pdf")
 
 
 def make_cov(uncorr, beta):
@@ -367,6 +368,7 @@ def make_posterior(training_parameters,
                    MCMC_steps=100,
                    n_principal_components=3,
                    calc_zscore=True,
+                   only_zscore=False,
                    save_figs=False,
                    posterior_fname=None,
                    emulator_std=False,
@@ -443,6 +445,9 @@ def make_posterior(training_parameters,
         The default is 3.
     calc_zscore : bool, optional
         If the z-score is calculated. The default is True.
+    only_zscore : bool, optional
+        If one wants to only calculate z-score distribution(s) for emulator(s).
+        The default is False.
     save_figs : bool, optional
         TODO: Make to work. Now saves many figures as default.
         If the figures are stored as pdf. Work in progress.
@@ -581,7 +586,7 @@ def make_posterior(training_parameters,
                                                      model_error=model_error))
             return np.sum(chi2s)
 
-        if calc_zscore:  # If one want's to skip z-score.
+        if calc_zscore or only_zscore:  # If one want's to skip z-score.
             i = 0
             for test_data, pcagpe in zip(testing_data, pca_gpe):
                 i += 1
@@ -590,6 +595,7 @@ def make_posterior(training_parameters,
                                                      return_std=True,
                                                      return_cov=False)
                 z_score(pred_samps, pred_std, test_data, pred_mean=pred_mean)
+            if only_zscore: return
     samples = None
     if load_samples:
         if not isinstance(load_samples, bool):

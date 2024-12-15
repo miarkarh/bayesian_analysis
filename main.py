@@ -776,7 +776,7 @@ if __name__ == '__main__':
                  pcacomps=10, n_restarts=10,  # extra_std=[[0.0055], [0.0075]],
                  nwalkers=200, nwalks=1000, burn=500, flat=True,
                  zoom=[[15, 20], [0.26, 0.28], [1.05, 1.6], [1.03, 1.095], [1.68, 2.05]],  # plot_fname='kuvat/wC.png',
-                 zscore=0, only_z=0,  # z_save_fig=True,
+                 zscore=1, only_z=0,  # z_save_fig=True,
                  create_emulator=1, emu_std=0, emu_cov=1, cov=1,
                  more_plots=False,
                  plot_save=False, plot_fname='gamma_posterior.pdf')
