@@ -24,9 +24,9 @@ def plot_R(calculated_R, x, Q2, title=''):
         plt.fill_between(Q2, mean + 2 * std, mean - 2 * std, alpha=0.2, label=r"2$\sigma$ margin")
 
     R = np.loadtxt("data/other/ratio_R_light_posterior_Q2_20.dat")
-    apu(R, "R ratio")
+    apu(R, "Without covariance matrix")
     R = np.loadtxt("data/other/ratio_R_light_posterior_cov_Q2_20.dat")
-    apu(R, "R ratio with covariance accounted")
+    apu(R, "With covariance matrix")
     plt.xscale("log")
     # plt.yscale("log")
     plt.legend(loc="upper left")
@@ -38,7 +38,6 @@ def plot_R(calculated_R, x, Q2, title=''):
     plt.tight_layout()
     plt.grid(True, alpha=0.2)
     plt.legend()
-    plt.show()
     plt.savefig("nuclear_suppression.pdf")
 
 
