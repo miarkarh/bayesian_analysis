@@ -39,7 +39,8 @@ def nuisance_profiling(D, T, beta, uncorr):
     plt.axvline(mean, color='r', linestyle='dashed', linewidth=0.9, alpha=0.8)
     plt.axvline(mean + std, color='k', linestyle='dashed', linewidth=0.5, alpha=0.8)
     plt.axvline(mean - std, color='k', linestyle='dashed', linewidth=0.5, alpha=0.8)
-    plt.title('Nuisance parameters. Mean: {:.3f}, Std: {:.3f}'.format(mean, std), fontsize=10)
+    plt.title("Nuisance parameters \n" + 'Mean: {:.3f}, Std: {:.3f}'.format(mean, std), fontsize=15)
+    plt.xlabel(r"$\lambda_k$", fontsize=15)
     plt.savefig('nuis.pdf')
     plt.show()
 
@@ -76,10 +77,10 @@ def plot_data(x, D, D_er=None, T=None, labels=None, title=None):
 
     """
     plt.figure()
-    if D_er is not None: plt.errorbar(x, D, yerr=D_er, fmt='o', markersize=1, linewidth=0.5, label=labels[0], color='black')
+    if D_er is not None: plt.errorbar(x, D, yerr=D_er, fmt='o', markersize=1.5, linewidth=0.5, label=labels[0], color='black')
     if labels is not None:
         if D_er is None: plt.scatter(x, D, s=1, label=labels[0])
-        plt.scatter(x, T, s=1, label=labels[1], color='red')
+        plt.scatter(x, T, label=labels[1], color='red', marker='3', linewidths=1, s=25)
 
     else:
         if D_er is None: plt.scatter(x, D, s=1)
@@ -88,8 +89,8 @@ def plot_data(x, D, D_er=None, T=None, labels=None, title=None):
     # plt.ylim([0.2, 1.6])
     plt.grid(True, alpha=0.3)
     plt.title(title)
-    plt.ylabel(r"$\sigma_r$")
-    plt.xlabel(r'$x_{Bj}$')
+    plt.ylabel(r"$\sigma_r$", fontsize=12)
+    plt.xlabel(r'$x_{Bj}$', fontsize=12)
     plt.legend()
     plt.savefig(str.lower(title) + ".pdf")
     plt.show()
@@ -150,7 +151,7 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
         diffpersyst = (D - D_shifted) / syserr
         plt.figure()
         plt.hist(diffpersyst, 100)
-        plt.title(r"Histogram of ($D-D_s)/\sigma_{sys}$")
+        plt.title(r"Histogram of ($D-D_s)/\sigma_{sys}$", fontsize=15)
         plt.savefig('hist.pdf')
         plt.show
 
@@ -184,14 +185,14 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
         plt.xscale("log")
         # plt.ylim([0.2, 1.6])
         plt.grid(True, alpha=0.3)
-        plt.ylabel(r"$\sigma_r$")
-        plt.xlabel(r"$x_{Bj}$")
+        plt.ylabel(r"$\sigma_r$", fontsize=12)
+        plt.xlabel(r"$x_{Bj}$", fontsize=12)
 
-        plt.title(title)
+        plt.title(title, fontsize=12)
 
-        plt.errorbar(x, D, yerr=syserr, fmt='o', markersize=1, linewidth=0.5, label=r"$\sigma_r$ with sys err", color='black')
+        plt.errorbar(x, D, yerr=syserr, fmt='o', markersize=1.5, linewidth=0.5, label=r"$\sigma_r$ with sys err", color='black')
         # plt.scatter(x1, D1, s=1, label=r"$\sigma_r$", color='black')
-        plt.scatter(x, D_shifted, s=1, label=r"$\sigma_r shifted$", color='red', marker="v")
+        plt.scatter(x, D_shifted, label=r"$\sigma_r shifted$", color='red', marker="3", linewidths=1)
 
         lw = 1
         plt.plot(x, model, label="Model", lw=lw)
@@ -199,7 +200,7 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
         plt.plot(x, model_cov, label="Model with cov", linestyle='--', lw=lw)
         # plt.fill_between(x, model_cov + 2 * model_cov_err, model_cov - 2 * model_cov_err, alpha=0.2, label=r"2$\sigma$ margin")
 
-        plt.legend()
+        plt.legend(fontsize=11)
 
     # nuisance parameter profiling
     nuis = nuisance_profiling(D, Tcov, beta, uncorr)
@@ -229,11 +230,11 @@ def more_plots(D, T, Tcov, beta, uncorr, Q2, x):
 
     title = "$Q^2$ = 3.5 $GeV^2$"
     plot_against_exp(x1, D1, D1_sys, D_sf1, T1, Tcov1, title)
-    plt.savefig("Q2_3,5_lines.pdf")
+    plt.savefig("Q2_3,5_lines.pdf", bbox_inches="tight")
 
     title = "$Q^2$ = 18 $GeV^2$"
     plot_against_exp(x2, D2, D2_sys, D_sf2, T2, Tcov2, title)
-    plt.savefig("Q2_18_lines.pdf")
+    plt.savefig("Q2_18_lines.pdf", bbox_inches="tight")
 
     plot_diff(D, D_shifted, D_er_sys)
 
