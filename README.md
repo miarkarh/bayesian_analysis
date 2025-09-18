@@ -1,7 +1,12 @@
 # Bayesian Analysis of Proton Structure
 
 A Python code for performing Bayesian analysis of proton structure parameters using a dipole QCD model and high energy electron-proton collision data. While the code was developed for this specific physics problem, most functions are written in a general way, allowing adaptation to other datasets and models.
+
 I somewhat followed jbernhard's example https://github.com/jbernhard/hic-param-est/tree/master. The detailed description of the theory behind the code is available in my master's thesis: https://jyx.jyu.fi/jyx/Record/jyx_123456789_99785#
+
+## Project Status
+This project was completed as part of my thesis and is **no longer actively maintained**.  
+The code is provided for reference and reuse, but no further updates or support will be provided.
 
 ## Description
 The goal of this project was to extract posterior distributions for proton structure parameters by fitting a mathematical model of the proton to high-energy electron-proton collision data using machine learning techniques:
