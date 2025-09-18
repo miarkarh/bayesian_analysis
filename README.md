@@ -39,7 +39,7 @@ samples = make_posterior(
     MCMC_steps=100,
     ...
 )
-
+```
 - This function automates posterior creation.
 - Can handle multiple datasets.
 - Allows tuning of MCMC and emulator parameters via `kwargs`.
