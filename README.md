@@ -4,6 +4,8 @@ A Python code for performing Bayesian analysis of proton structure parameters us
 
 I somewhat followed jbernhard's example https://github.com/jbernhard/hic-param-est/tree/master. The detailed description of the theory behind the code is available in my master's thesis: https://jyx.jyu.fi/jyx/Record/jyx_123456789_99785#
 
+**This project is no longer maintained.** 
+
 ## Description
 The goal of this project was to extract posterior distributions for proton structure parameters by fitting a mathematical model of the proton to high-energy electron-proton collision data using machine learning techniques:
 
