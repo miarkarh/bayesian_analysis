@@ -17,7 +17,7 @@ The approach was successful and demonstrates a general pipeline for Bayesian par
 Listed in `requirements.txt`
 
 ## Usage
-The code does not provide precompiled executables. You need to modify and run the Python scripts yourself. Most modifications should only be required in the `main` functions,
+The code does not provide precompiled executables. You need to modify and run the Python scripts yourself. Most modifications should only be required in the `main` files or as new `main` file,
 but its better to look into general stucture too.
 
 ### Recommended Function
