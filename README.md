@@ -23,7 +23,7 @@ The code does not provide precompiled executables. You need to modify and run th
 but its better to look into general stucture too.
 
 ### Recommended Function
-I recommend to try the `make_posterior` function found in `bayesian_analysis_functions.py`. I tried to make it a more general and easier way to utilize this code for 
+One can try the `make_posterior` function found in `bayesian_analysis_functions.py`. I tried to make it a more general and easier way to utilize this code for 
 the posterior creations, but I cannot promise full functionality and bug free implementation yet.
 
 ```python
