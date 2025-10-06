@@ -186,7 +186,7 @@ class PCA_GPE:
             gp_var = np.concatenate([c.diagonal()[:, np.newaxis] for c in gp_cov], axis=1)
 
             # Add extra uncertainty to predictive variance.
-            extra_std = np.array(extra_std, copy=False).reshape(-1, 1)
+            extra_std = np.asarray(extra_std).reshape(-1, 1)
             gp_var += extra_std**2
 
             # Compute the covariance at each sample point using the pre-calculated arrays.
