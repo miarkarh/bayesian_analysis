@@ -4,6 +4,8 @@ A Python code for performing Bayesian analysis of proton structure parameters us
 
 I somewhat followed jbernhard's example https://github.com/jbernhard/hic-param-est/tree/master. The detailed description of the theory behind the code is available in my master's thesis: https://jyx.jyu.fi/jyx/Record/jyx_123456789_99785#
 
+**This project is no longer maintained.** 
+
 ## Description
 The goal of this project was to extract posterior distributions for proton structure parameters by fitting a mathematical model of the proton to high-energy electron-proton collision data using machine learning techniques:
 
@@ -17,11 +19,11 @@ The approach was successful and demonstrates a general pipeline for Bayesian par
 Listed in `requirements.txt`
 
 ## Usage
-The code does not provide precompiled executables. You need to modify and run the Python scripts yourself. Most modifications should only be required in the `main` functions,
+The code does not provide precompiled executables. You need to modify and run the Python scripts yourself. Most modifications should only be required in the `main` files or as new `main` file,
 but its better to look into general stucture too.
 
 ### Recommended Function
-I recommend to try the `make_posterior` function found in `bayesian_analysis_functions.py`. I tried to make it a more general and easier way to utilize this code for 
+One can try the `make_posterior` function found in `bayesian_analysis_functions.py`. I tried to make it a more general and easier way to utilize this code for 
 the posterior creations, but I cannot promise full functionality and bug free implementation yet.
 
 ```python

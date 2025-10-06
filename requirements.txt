@@ -4,7 +4,5 @@ scipy
 emcee
 tqdm
 scikit-learn
-pickle
 plyer 	# for pop up alert when code is done running.
-time
 corner
